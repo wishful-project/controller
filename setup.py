@@ -1,14 +1,19 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
+
+def readme():
+    with open('README.md') as f:
+        return f.read()
 
 setup(
     name='wishful_upis',
     version='0.1.0',
-    packages=['wishful_upis'],
+    packages=find_packages(),
     url='http://www.wishful-project.eu/software',
     license='',
     author='Mikolaj Chwalisz',
     author_email='chwalisz@tkn.tu-berlin.de',
-    description='Implementation of a wireless controller using the unified programming interfaces (UPIs) of the Wishful project.',
+    description='Unified Programming Interfaces (UPIs) Framework',
+    long_description='Implementation of a wireless controller using the unified programming interfaces (UPIs) of the Wishful project.',
     keywords='wireless control',
-    install_requires=['pyzmq']
+    install_requires=['docopt', 'pyzmq', 'gevent']
 )
