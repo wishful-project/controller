@@ -1,0 +1,4 @@
+
+message wifi {
+    optional int32 channel = 1;
+}
