@@ -51,6 +51,18 @@ def new_node(group, node, msg):
 
 # ctrl.add_callback("new_node", new_node)
 
+def transactional_code_example():
+    """Just a dummy to show how I imagine transactions in the controller
+
+    `with` statement is described http://effbot.org/zone/python-with-statement.htm
+    """
+
+    with upi.Transaction() as t:
+        # Either:
+        t.add(group, upi.radio.wifi.set_channel(11))
+        # or
+        ctrl.send(node, upi.radio.wifi.get_channel(), delay="10s")
+
 
 def main(args):
     """Run the code for dummy"""
