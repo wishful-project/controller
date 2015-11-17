@@ -57,3 +57,7 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Generated protobufs
+*_pb2.py
+*_pb3.py
