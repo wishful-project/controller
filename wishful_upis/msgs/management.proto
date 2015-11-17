@@ -1,0 +1,13 @@
+// syntax = "proto3";
+package wishful_upis.mgmt;
+
+message Description {
+	required string msg_type = 1;
+	optional uint64 run_at = 2;
+	oneof sub_sec {
+		uint64 run_at_nano = 3;
+		uint64 run_at_milli = 4;
+	}
+	optional string tansaction_id = 5;
+	optional bool msg_set = 6; // Setter/Getter
+}
