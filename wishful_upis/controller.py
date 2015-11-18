@@ -4,6 +4,7 @@ import sys
 import zmq
 import uuid
 import yaml
+import datetime
 from controller_module import *
 from msgs.management_pb2 import Description as msgDesc
 
@@ -96,7 +97,6 @@ class Controller(object):
         group = nodeId
         msgType.Clear()
         msgType.msg_type = "NEW_NODE_ACK"
-        msgType.exec_time = 0
         msg = "OK_OK_OK"
         msgContainer = [group, msgType.SerializeToString(), msg]
 
@@ -130,21 +130,15 @@ class Controller(object):
                 group = self.nodes[0]
                 msgType.Clear()
                 msgType.msg_type = "RADIO"
-                msgType.exec_time = 0
                 msg = "SET_CHANNEL"
             else:
                 group = self.nodes[0]
                 msgType.Clear()
                 msgType.msg_type = "PERFORMANCE_TEST"
-                msgType.exec_time = 2                
+                msgType.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))                
                 msg = "START_SERVER"
 
             i += 1
-            #a = datetime.datetime.now()
-            #string_date = "2013-09-28 20:30:55.78200"
-            #b = datetime.datetime.strptime(string_date, "%Y-%m-%d %H:%M:%S.%f")
-            #if a > b:
-            #   print "OK"
 
             self.log.debug("Controller sends message: {0}::{1}".format(msgType.msg_type, msg))
             msgContainer = [group, msgType.SerializeToString(), msg]

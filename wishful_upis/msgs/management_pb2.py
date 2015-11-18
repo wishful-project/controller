@@ -13,7 +13,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='management.proto',
   package='wishful_upis.mgmt',
-  serialized_pb='\n\x10management.proto\x12\x11wishful_upis.mgmt\"i\n\x0b\x44\x65scription\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\x04\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08')
+  serialized_pb='\n\x10management.proto\x12\x11wishful_upis.mgmt\"i\n\x0b\x44\x65scription\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\t\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08')
 
 
 
@@ -34,8 +34,8 @@ _DESCRIPTION = _descriptor.Descriptor(
       options=None),
     _descriptor.FieldDescriptor(
       name='exec_time', full_name='wishful_upis.mgmt.Description.exec_time', index=1,
-      number=2, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),

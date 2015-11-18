@@ -2,7 +2,7 @@ package wishful_upis.mgmt;
 
 message Description {
 	required string msg_type = 1;
-	optional uint64 exec_time = 2;
+	optional string exec_time = 2;
 	optional string transaction_id = 3;
 	optional string uuid = 4;
 	optional bool msg_set = 5; // Setter/Getter
