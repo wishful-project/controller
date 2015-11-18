@@ -1,35 +1,132 @@
 import logging
 import time
-from gevent import (socket,
-                    Greenlet,
-                    )
+import sys
+import zmq
+import uuid
+import yaml
 
+__author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
+__copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
+__version__ = "0.1.0"
+__email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-class Controller(Greenlet):
-    def __init__(self):
-        Greenlet.__init__(self)
+class Controller(object):
+    def __init__(self, dl, ul):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
-    nodes = None
-    groups = None
-    msg_type = {} # 'full name': [(group, callback)]
+        self.config = None
+        self.myUuid = uuid.uuid4()
+        self.myId = str(self.myUuid)
 
-    def _run(self):
-        while True:
-            time.sleep(1)
+        self.nodes = []
+        self.groups = []
+        self.msg_type = {} # 'full name': [(group, callback)]
+
+        self.context = zmq.Context()
+        self.poller = zmq.Poller()
+
+        self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE_MSG")
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
+        self.ul_socket.bind(ul)
+
+        self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
+        self.dl_socket.bind(dl)
+
+        #register UL socket in poller
+        self.poller.register(self.ul_socket, zmq.POLLIN)
+
+    def read_config_file(self, path=None):
+        self.log.debug("Path to driver: {0}".format(path))
+
+        with open(path, 'r') as f:
+           config = yaml.load(f)
+
+        return config
+
+    def load_modules(self, config):
+        self.log.debug("Config: {0}".format(config))
+        pass
 
     def add_callback(self, group, callback):
-        def test(group):
-            pass
         # assert callable(callback)
-        self.log.debug("added callback {:s} for group {:s}".format(callback, group))
-        return  test
+        self.log.debug("Added callback {:s} for group {:s}".format(callback, group))
+        pass
 
+    def add_new_node(self, msgContainer):
+        assert len(msgContainer) == 3
+        group = msgContainer[0]
+        msgType = msgContainer[1]
+        msg = msgContainer[2]
 
-class ConnectionManager(Greenlet):
+        nodeId = msg
+        self.log.debug("Controller adds new node with UUID: {0}".format(nodeId))
+        self.nodes.append(nodeId)
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  nodeId)
 
-    def __init__(self):
-        Greenlet.__init__(self)
-        self.log = logging.getLogger("{module}.{name}".format(
-            module=self.__class__.__module__, name=self.__class__.__name__))
+        group = nodeId
+        msgType = "NEW_NODE_ACK"
+        msg = "OK_OK_OK"
+        delay = 0
+        msgContainer = [group, msgType, msg, str(delay)]
+
+        time.sleep(1) # TODO: why?
+        self.dl_socket.send_multipart(msgContainer)
+
+    def process_msgs(self):
+        i = 0
+        while True:
+            socks = dict(self.poller.poll())
+
+            if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
+                msgContainer = self.ul_socket.recv_multipart()
+
+                assert len(msgContainer)
+                group = msgContainer[0]
+                msgType = msgContainer[1]
+                msg = msgContainer[2]
+
+                self.log.debug("Controller received message: {0}::{1} from agent".format(msgType, msg))
+
+                if msgType == "NEW_NODE_MSG":
+                    self.add_new_node(msgContainer)
+                else:
+                    self.log.debug("Controller drops unknown message: {0}::{1} from agent".format(msgType, msg))
+
+            self.log.debug("Sends new command")
+
+            if i % 2 == 1:
+                group = self.nodes[0]
+                msgType = "RADIO"
+                msg = "SET_CHANNEL"
+                delay = 0
+            else:
+                group = self.nodes[0]
+                msgType = "PERFORMANCE_TEST"
+                msg = "START_SERVER"
+                delay = 2 #seconds
+
+            i += 1
+
+            self.log.debug("Controller sends message: {0}::{1}".format(msgType, msg))
+            msgContainer = [group, msgType, msg, str(delay)]
+            self.dl_socket.send_multipart(msgContainer)
+
+    def run(self):
+        self.log.debug("Controller starts".format())
+        try:
+            self.process_msgs()
+
+        except KeyboardInterrupt:
+            self.log.debug("Controller exits")
+
+        finally:
+            self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
+            self.log.debug("Kills all modules' subprocesses")
+            #for name, driver in self.drivers.iteritems():
+            #    driver.kill_driver_subprocess()
+            #self.jobScheduler.shutdown()
+            self.ul_socket.close()
+            self.dl_socket.close()
+            self.context.term()
