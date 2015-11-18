@@ -4,6 +4,7 @@ import sys
 import zmq
 import uuid
 import yaml
+from controller_module import *
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -18,6 +19,7 @@ class Controller(object):
         self.config = None
         self.myUuid = uuid.uuid4()
         self.myId = str(self.myUuid)
+        self.modules = {}
 
         self.nodes = []
         self.groups = []
@@ -38,7 +40,7 @@ class Controller(object):
         self.poller.register(self.ul_socket, zmq.POLLIN)
 
     def read_config_file(self, path=None):
-        self.log.debug("Path to driver: {0}".format(path))
+        self.log.debug("Path to module: {0}".format(path))
 
         with open(path, 'r') as f:
            config = yaml.load(f)
@@ -48,6 +50,31 @@ class Controller(object):
     def load_modules(self, config):
         self.log.debug("Config: {0}".format(config))
         pass
+
+    def load_modules(self, config):
+        self.log.debug("Config: {0}".format(config))
+
+        for module_name, module_parameters in config.iteritems():
+            self.add_module(
+                self.exec_module(
+                        name=module_name,
+                        path=module_parameters['path'],
+                        args=module_parameters['args']
+                )
+            )
+
+    def add_module(self, module):
+        self.log.debug("Adding new module: {0}".format(module))
+        self.modules[module.name] = module
+
+        #register module socket in poller
+        # TODO: specific (named) socket for synchronization and discovery modules
+        #self.poller.register(module.socket, zmq.POLLIN)
+
+
+    def exec_module(self, name, path, args):
+        new_module = ControllerModule(name, path, args)
+        return new_module
 
     def add_callback(self, group, callback):
         # assert callable(callback)
@@ -124,9 +151,8 @@ class Controller(object):
         finally:
             self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
             self.log.debug("Kills all modules' subprocesses")
-            #for name, driver in self.drivers.iteritems():
-            #    driver.kill_driver_subprocess()
-            #self.jobScheduler.shutdown()
+            for name, module in self.modules.iteritems():
+                module.kill_module_subprocess()
             self.ul_socket.close()
             self.dl_socket.close()
             self.context.term()

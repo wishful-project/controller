@@ -2,10 +2,10 @@
 
 discovery_module:
     type : python
-    path : /home/pgawlowicz/workspace/new_wishful/wishful_driver_discovery/bin/discovery_pyre_controller
-    args : ['-d tcp://127.0.0.1:8989', '-u tcp://127.0.0.1:8990']
+    path : ../../wishful_driver_discovery/bin/discovery_pyre_controller
+    args : ['']
 
 synchronization_module:
     type : python
-    path : /home/pgawlowicz/workspace/new_wishful/wishful_module_ptp/bin/ptp_server.py
+    path : ../../wishful_module_ptp/bin/ptp_server.py
     args : ['-i eth0']
