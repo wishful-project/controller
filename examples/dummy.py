@@ -18,10 +18,10 @@ Other options:
    --version           show version and exit
 """
 
-__author__ = "Mikolaj Chwalisz"
-__copyright__ = "Copyright (c) 2015, Technische Universität Berlin"
+__author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
+__copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
-__email__ = "chwalisz@tkn.tu-berlin.de"
+__email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 import logging
 import wishful_upis as upi

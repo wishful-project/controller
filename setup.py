@@ -38,22 +38,22 @@ proto_src = [
     'wishful_upis/msgs/network.proto'
     ]
 
-class build_py(_build_py):
-  def run(self):
-    for f in proto_src:
-        generate_proto(f)
-    _build_py.run(self)
+#class build_py(_build_py):
+#  def run(self):
+#    for f in proto_src:
+#        generate_proto(f)
+#    _build_py.run(self)
 
-class clean(_clean):
-  def run(self):
-    # Delete generated files in the code tree.
-    for (dirpath, dirnames, filenames) in os.walk("."):
-      for filename in filenames:
-        filepath = os.path.join(dirpath, filename)
-        if filepath.endswith("_pb2.py"):
-          os.remove(filepath)
-    # _clean is an old-style class, so super() doesn't work.
-    _clean.run(self)
+#class clean(_clean):
+#  def run(self):
+#    # Delete generated files in the code tree.
+#    for (dirpath, dirnames, filenames) in os.walk("."):
+#      for filename in filenames:
+#        filepath = os.path.join(dirpath, filename)
+#        if filepath.endswith("_pb2.py"):
+#          os.remove(filepath)
+#    # _clean is an old-style class, so super() doesn't work.
+#    _clean.run(self)
 
 setup(
     name='wishful_upis',
@@ -65,11 +65,11 @@ setup(
         ],
     url='http://www.wishful-project.eu/software',
     license='',
-    author='Mikolaj Chwalisz',
-    author_email='chwalisz@tkn.tu-berlin.de',
+    author='Piotr Gawlowicz, Mikolaj Chwalisz',
+    author_email='{gawlowicz, chwalisz}@tkn.tu-berlin.de',
     description='Unified Programming Interfaces (UPIs) Framework',
     long_description='Implementation of a wireless controller using the unified programming interfaces (UPIs) of the Wishful project.',
     keywords='wireless control',
-    cmdclass = { 'clean': clean, 'build_py': build_py },
-    install_requires=['docopt', 'pyzmq', 'gevent']
+    #cmdclass = { 'clean': clean, 'build_py': build_py },
+    install_requires=['docopt', 'pyzmq', 'gevent', 'protobuf']
 )
