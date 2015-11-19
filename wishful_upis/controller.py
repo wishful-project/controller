@@ -132,25 +132,26 @@ class Controller(object):
                 else:
                     self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
 
-            self.log.debug("Sends new command")
+            if len(self.nodes):
+                self.log.debug("Sends new command")
+                if i % 2 == 1:
+                    group = self.nodes[0]
+                    msgDesc.Clear()
+                    msgDesc.msg_type = "RADIO"
+                    msg = "SET_CHANNEL"
+                else:
+                    group = self.nodes[0]
+                    msgDesc.Clear()
+                    msgDesc.msg_type = "PERFORMANCE_TEST"
+                    msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))
+                    msg = "START_SERVER"
 
-            if i % 2 == 1:
-                group = self.nodes[0]
-                msgDesc.Clear()
-                msgDesc.msg_type = "RADIO"
-                msg = "SET_CHANNEL"
-            else:
-                group = self.nodes[0]
-                msgDesc.Clear()
-                msgDesc.msg_type = "PERFORMANCE_TEST"
-                msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))                
-                msg = "START_SERVER"
+                i += 1
 
-            i += 1
-
-            self.log.debug("Controller sends message: {0}::{1}".format(msgDesc.msg_type, msg))
-            msgContainer = [group, msgDesc.SerializeToString(), msg]
-            self.dl_socket.send_multipart(msgContainer)
+                self.log.debug("Controller sends message: {0}::{1}".format(msgDesc.msg_type, msg))
+                msgContainer = [group, msgDesc.SerializeToString(), msg]
+                self.dl_socket.send_multipart(msgContainer)
+                time.sleep(2)
 
     def run(self):
         self.log.debug("Controller starts".format())
