@@ -115,6 +115,7 @@ class Controller(object):
     def process_msgs(self):
         i = 0
         while True:
+            self.log.debug("NEXT ITERATION".format())
             socks = dict(self.poller.poll())
 
             if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
