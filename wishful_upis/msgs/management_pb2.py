@@ -18,7 +18,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='management.proto',
   package='wishful_upis.mgmt',
-  serialized_pb=_b('\n\x10management.proto\x12\x11wishful_upis.mgmt\"e\n\x07MsgDesc\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\t\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08\"<\n\nNewNodeMsg\x12\x12\n\nagent_uuid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04info\x18\x03 \x01(\t\"Y\n\nNewNodeAck\x12\x0e\n\x06status\x18\x01 \x02(\x08\x12\x17\n\x0f\x63ontroller_uuid\x18\x02 \x01(\t\x12\x12\n\nagent_uuid\x18\x03 \x01(\t\x12\x0e\n\x06topics\x18\x04 \x03(\t\"K\n\x17\x43ontrollerDiscoveredMsg\x12\x11\n\tdown_link\x18\x01 \x01(\t\x12\x0f\n\x07up_link\x18\x02 \x01(\t\x12\x0c\n\x04pair\x18\x03 \x01(\t')
+  serialized_pb=_b('\n\x10management.proto\x12\x11wishful_upis.mgmt\"e\n\x07MsgDesc\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\t\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08\"\xb4\x01\n\nNewNodeMsg\x12\x12\n\nagent_uuid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04info\x18\x03 \x01(\t\x12\x0f\n\x07modules\x18\x04 \x03(\t\x12;\n\nattributes\x18\x05 \x03(\x0b\x32\'.wishful_upis.mgmt.NewNodeMsg.Attribute\x1a(\n\tAttribute\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"Y\n\nNewNodeAck\x12\x0e\n\x06status\x18\x01 \x02(\x08\x12\x17\n\x0f\x63ontroller_uuid\x18\x02 \x01(\t\x12\x12\n\nagent_uuid\x18\x03 \x01(\t\x12\x0e\n\x06topics\x18\x04 \x03(\t\"K\n\x17\x43ontrollerDiscoveredMsg\x12\x11\n\tdown_link\x18\x01 \x01(\t\x12\x0f\n\x07up_link\x18\x02 \x01(\t\x12\x0c\n\x04pair\x18\x03 \x01(\t')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -83,6 +83,42 @@ _MSGDESC = _descriptor.Descriptor(
 )
 
 
+_NEWNODEMSG_ATTRIBUTE = _descriptor.Descriptor(
+  name='Attribute',
+  full_name='wishful_upis.mgmt.NewNodeMsg.Attribute',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='wishful_upis.mgmt.NewNodeMsg.Attribute.name', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='wishful_upis.mgmt.NewNodeMsg.Attribute.value', index=1,
+      number=2, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=283,
+  serialized_end=323,
+)
+
 _NEWNODEMSG = _descriptor.Descriptor(
   name='NewNodeMsg',
   full_name='wishful_upis.mgmt.NewNodeMsg',
@@ -111,10 +147,24 @@ _NEWNODEMSG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='modules', full_name='wishful_upis.mgmt.NewNodeMsg.modules', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='attributes', full_name='wishful_upis.mgmt.NewNodeMsg.attributes', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
-  nested_types=[],
+  nested_types=[_NEWNODEMSG_ATTRIBUTE, ],
   enum_types=[
   ],
   options=None,
@@ -122,8 +172,8 @@ _NEWNODEMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=142,
-  serialized_end=202,
+  serialized_start=143,
+  serialized_end=323,
 )
 
 
@@ -173,8 +223,8 @@ _NEWNODEACK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=204,
-  serialized_end=293,
+  serialized_start=325,
+  serialized_end=414,
 )
 
 
@@ -217,10 +267,12 @@ _CONTROLLERDISCOVEREDMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=295,
-  serialized_end=370,
+  serialized_start=416,
+  serialized_end=491,
 )
 
+_NEWNODEMSG_ATTRIBUTE.containing_type = _NEWNODEMSG
+_NEWNODEMSG.fields_by_name['attributes'].message_type = _NEWNODEMSG_ATTRIBUTE
 DESCRIPTOR.message_types_by_name['MsgDesc'] = _MSGDESC
 DESCRIPTOR.message_types_by_name['NewNodeMsg'] = _NEWNODEMSG
 DESCRIPTOR.message_types_by_name['NewNodeAck'] = _NEWNODEACK
@@ -234,11 +286,19 @@ MsgDesc = _reflection.GeneratedProtocolMessageType('MsgDesc', (_message.Message,
 _sym_db.RegisterMessage(MsgDesc)
 
 NewNodeMsg = _reflection.GeneratedProtocolMessageType('NewNodeMsg', (_message.Message,), dict(
+
+  Attribute = _reflection.GeneratedProtocolMessageType('Attribute', (_message.Message,), dict(
+    DESCRIPTOR = _NEWNODEMSG_ATTRIBUTE,
+    __module__ = 'management_pb2'
+    # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.NewNodeMsg.Attribute)
+    ))
+  ,
   DESCRIPTOR = _NEWNODEMSG,
   __module__ = 'management_pb2'
   # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.NewNodeMsg)
   ))
 _sym_db.RegisterMessage(NewNodeMsg)
+_sym_db.RegisterMessage(NewNodeMsg.Attribute)
 
 NewNodeAck = _reflection.GeneratedProtocolMessageType('NewNodeAck', (_message.Message,), dict(
   DESCRIPTOR = _NEWNODEACK,

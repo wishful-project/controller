@@ -12,6 +12,14 @@ message NewNodeMsg {
 	required string agent_uuid = 1;
 	optional string name = 2;
 	optional string info = 3;
+    repeated string modules = 4;
+
+	message Attribute {
+        required string name = 1;
+        required string value = 2;
+    }
+
+    repeated Attribute attributes = 5;
 }
 
 message NewNodeAck {
