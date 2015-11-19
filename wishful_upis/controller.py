@@ -6,7 +6,8 @@ import uuid
 import yaml
 import datetime
 from controller_module import *
-from msgs.management_pb2 import Description as msgDesc
+from msgs.management_pb2 import *
+from msgs.msg_helper import get_msg_type
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -31,7 +32,7 @@ class Controller(object):
         self.poller = zmq.Poller()
 
         self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE_MSG")
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
         self.ul_socket.bind(ul)
 
@@ -70,7 +71,7 @@ class Controller(object):
         self.modules[module.name] = module
 
         #register module socket in poller
-        # TODO: specific (named) socket for synchronization and discovery modules
+        # TODO: specific (named) socket for synchronization and discovery modules or do we need it ?
         #self.poller.register(module.socket, zmq.POLLIN)
 
 
@@ -85,20 +86,28 @@ class Controller(object):
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
-        msgType = msgDesc()
-        msgType.ParseFromString(msgContainer[1])
-        msg = msgContainer[2]
+        msgDesc = MsgDesc()
+        msgDesc.ParseFromString(msgContainer[1])
+        msg = NewNodeMsg()
+        msg.ParseFromString(msgContainer[2])
+        agentId = str(msg.agent_uuid)
+        agentName = msg.name
+        agentInfo = msg.info
 
-        nodeId = msg
-        self.log.debug("Controller adds new node with UUID: {0}".format(nodeId))
-        self.nodes.append(nodeId)
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  nodeId)
+        self.log.debug("Controller adds new node with UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
+        self.nodes.append(agentId)
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
 
-        group = nodeId
-        msgType.Clear()
-        msgType.msg_type = "NEW_NODE_ACK"
-        msg = "OK_OK_OK"
-        msgContainer = [group, msgType.SerializeToString(), msg]
+        group = agentId
+        msgDesc.Clear()
+        msgDesc.msg_type = get_msg_type(NewNodeAck)
+        msg = NewNodeAck()
+        msg.status = True
+        msg.controller_uuid = self.myId
+        msg.agent_uuid = agentId
+        msg.topics.append("ALL")
+
+        msgContainer = [group, msgDesc.SerializeToString(), msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
         self.dl_socket.send_multipart(msgContainer)
@@ -113,35 +122,34 @@ class Controller(object):
 
                 assert len(msgContainer) == 3
                 group = msgContainer[0]
-                msgType = msgDesc()
-                msgType.ParseFromString(msgContainer[1])
+                msgDesc = MsgDesc()
+                msgDesc.ParseFromString(msgContainer[1])
                 msg = msgContainer[2]
 
-                self.log.debug("Controller received message: {0}::{1} from agent".format(msgType.msg_type, msg))
-
-                if msgType.msg_type == "NEW_NODE_MSG":
+                self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
+                if msgDesc.msg_type == get_msg_type(NewNodeMsg):
                     self.add_new_node(msgContainer)
                 else:
-                    self.log.debug("Controller drops unknown message: {0}::{1} from agent".format(msgType.msg_type, msg))
+                    self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
 
             self.log.debug("Sends new command")
 
             if i % 2 == 1:
                 group = self.nodes[0]
-                msgType.Clear()
-                msgType.msg_type = "RADIO"
+                msgDesc.Clear()
+                msgDesc.msg_type = "RADIO"
                 msg = "SET_CHANNEL"
             else:
                 group = self.nodes[0]
-                msgType.Clear()
-                msgType.msg_type = "PERFORMANCE_TEST"
-                msgType.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))                
+                msgDesc.Clear()
+                msgDesc.msg_type = "PERFORMANCE_TEST"
+                msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))                
                 msg = "START_SERVER"
 
             i += 1
 
-            self.log.debug("Controller sends message: {0}::{1}".format(msgType.msg_type, msg))
-            msgContainer = [group, msgType.SerializeToString(), msg]
+            self.log.debug("Controller sends message: {0}::{1}".format(msgDesc.msg_type, msg))
+            msgContainer = [group, msgDesc.SerializeToString(), msg]
             self.dl_socket.send_multipart(msgContainer)
 
     def run(self):

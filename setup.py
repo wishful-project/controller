@@ -71,5 +71,5 @@ setup(
     long_description='Implementation of a wireless controller using the unified programming interfaces (UPIs) of the Wishful project.',
     keywords='wireless control',
     #cmdclass = { 'clean': clean, 'build_py': build_py },
-    install_requires=['docopt', 'pyzmq', 'gevent', 'protobuf']
+    install_requires=['docopt', 'pyzmq', 'gevent', 'protobuf', 'pyyaml']
 )

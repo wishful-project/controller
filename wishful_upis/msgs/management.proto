@@ -1,9 +1,28 @@
 package wishful_upis.mgmt;
 
-message Description {
+message MsgDesc {
 	required string msg_type = 1;
 	optional string exec_time = 2;
 	optional string transaction_id = 3;
 	optional string uuid = 4;
 	optional bool msg_set = 5; // Setter/Getter
+}
+
+message NewNodeMsg {
+	required string agent_uuid = 1;
+	optional string name = 2;
+	optional string info = 3;
+}
+
+message NewNodeAck {
+	required bool status = 1;
+	optional string controller_uuid = 2;
+	optional string agent_uuid = 3;
+	repeated string topics = 4;
+}
+
+message ControllerDiscoveredMsg {
+	optional string down_link = 1;
+	optional string up_link = 2;
+	optional string pair = 3;
 }
