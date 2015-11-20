@@ -48,6 +48,15 @@ message DiscoverySuccessMsg {
 	required bool status = 1;
 }
 
+message DiscoveryRestartMsg {
+	optional string reason = 1;
+}
+
+message HelloMsg {
+	required string uuid = 1;
+	required uint32 timeout = 2;
+}
+
 
 message ExampleModuleReq {
 	optional string hello = 1;

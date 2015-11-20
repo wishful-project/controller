@@ -27,6 +27,7 @@ class Controller(object):
         self.nodes = []
         self.groups = []
         self.msg_type = {} # 'full name': [(group, callback)]
+        self.echoMsgInterval = 3
 
         self.context = zmq.Context()
         self.poller = zmq.Poller()
@@ -130,6 +131,29 @@ class Controller(object):
         if agentId in self.nodes:
             self.nodes.remove(agentId)
 
+    def send_hello_msg_to_controller(self, nodeId):
+        self.log.debug("Controller sends HelloMsg to agent")
+        group = nodeId
+        msgDesc = MsgDesc()
+        msgDesc.msg_type = get_msg_type(HelloMsg)
+        msg = HelloMsg()
+        msg.uuid = str(self.myId)
+        msg.timeout = 3 * self.echoMsgInterval
+        msgContainer = [group, msgDesc.SerializeToString(), msg.SerializeToString()]
+        self.dl_socket.send_multipart(msgContainer)
+
+    def serve_hello_msg(self, msgContainer):
+        self.log.debug("Controller received HELLO MESSAGE from agent".format())
+        group = msgContainer[0]
+        msgDesc = MsgDesc()
+        msgDesc.ParseFromString(msgContainer[1])
+        msg = HelloMsg()
+        msg.ParseFromString(msgContainer[2])
+
+        self.send_hello_msg_to_controller(str(msg.uuid))
+        #reschedule agent delete function in scheduler
+        pass
+
     def process_msgs(self):
         i = 0
         while True:
@@ -152,6 +176,8 @@ class Controller(object):
                     self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
                     if msgDesc.msg_type == get_msg_type(NewNodeMsg):
                         self.add_new_node(msgContainer)
+                    elif msgDesc.msg_type == get_msg_type(HelloMsg):
+                        self.serve_hello_msg(msgContainer)
                     elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
                         self.remove_new_node(msgContainer)
                     else:
@@ -186,8 +212,9 @@ class Controller(object):
         except KeyboardInterrupt:
             self.log.debug("Controller exits")
 
+        except:
+             self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
         finally:
-            self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
             self.log.debug("Exit all modules' subprocesses")
             for name, module in self.modules.iteritems():
                 module.exit()
