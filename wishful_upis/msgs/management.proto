@@ -44,6 +44,10 @@ message ControllerDiscoveredMsg {
 	optional string pair = 3;
 }
 
+message DiscoverySuccessMsg {
+	required bool status = 1;
+}
+
 
 message ExampleModuleReq {
 	optional string hello = 1;

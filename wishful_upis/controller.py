@@ -95,6 +95,10 @@ class Controller(object):
         agentName = msg.name
         agentInfo = msg.info
 
+        if agentId in self.nodes:
+            self.log.debug("Already known Agent UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
+            return
+
         self.log.debug("Controller adds new node with UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
         self.nodes.append(agentId)
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
