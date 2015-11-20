@@ -33,6 +33,7 @@ class Controller(object):
 
         self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
         self.ul_socket.bind(ul)
 
@@ -112,6 +113,19 @@ class Controller(object):
         time.sleep(1) # TODO: why?
         self.dl_socket.send_multipart(msgContainer)
 
+    def remove_new_node(self, msgContainer):
+        group = msgContainer[0]
+        msgDesc = MsgDesc()
+        msgDesc.ParseFromString(msgContainer[1])
+        msg = NodeExitMsg()
+        msg.ParseFromString(msgContainer[2])
+        agentId = str(msg.agent_uuid)
+        reason = msg.reason
+
+        self.log.debug("Controller removes new node with UUID: {0}, Reason: {1}".format(agentId, reason))
+        self.nodes.remove(agentId)
+
+
     def process_msgs(self):
         i = 0
         while True:
@@ -130,6 +144,8 @@ class Controller(object):
                 self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
                 if msgDesc.msg_type == get_msg_type(NewNodeMsg):
                     self.add_new_node(msgContainer)
+                elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
+                    self.remove_new_node(msgContainer)
                 else:
                     self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
 

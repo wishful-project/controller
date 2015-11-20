@@ -8,6 +8,7 @@ message MsgDesc {
 	optional bool msg_set = 5; // Setter/Getter
 }
 
+
 message NewNodeMsg {
 	required string agent_uuid = 1;
 	optional string name = 2;
@@ -22,6 +23,7 @@ message NewNodeMsg {
     repeated Attribute attributes = 5;
 }
 
+
 message NewNodeAck {
 	required bool status = 1;
 	optional string controller_uuid = 2;
@@ -29,8 +31,25 @@ message NewNodeAck {
 	repeated string topics = 4;
 }
 
+
+message NodeExitMsg {
+	required string agent_uuid = 1;
+	optional string reason = 2;
+}
+
+
 message ControllerDiscoveredMsg {
 	optional string down_link = 1;
 	optional string up_link = 2;
 	optional string pair = 3;
+}
+
+
+message ExampleModuleReq {
+	optional string hello = 1;
+}
+
+
+message ExampleModuleAck {
+	required string hello = 1;
 }

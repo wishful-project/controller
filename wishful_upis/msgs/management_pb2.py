@@ -18,7 +18,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='management.proto',
   package='wishful_upis.mgmt',
-  serialized_pb=_b('\n\x10management.proto\x12\x11wishful_upis.mgmt\"e\n\x07MsgDesc\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\t\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08\"\xb4\x01\n\nNewNodeMsg\x12\x12\n\nagent_uuid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04info\x18\x03 \x01(\t\x12\x0f\n\x07modules\x18\x04 \x03(\t\x12;\n\nattributes\x18\x05 \x03(\x0b\x32\'.wishful_upis.mgmt.NewNodeMsg.Attribute\x1a(\n\tAttribute\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"Y\n\nNewNodeAck\x12\x0e\n\x06status\x18\x01 \x02(\x08\x12\x17\n\x0f\x63ontroller_uuid\x18\x02 \x01(\t\x12\x12\n\nagent_uuid\x18\x03 \x01(\t\x12\x0e\n\x06topics\x18\x04 \x03(\t\"K\n\x17\x43ontrollerDiscoveredMsg\x12\x11\n\tdown_link\x18\x01 \x01(\t\x12\x0f\n\x07up_link\x18\x02 \x01(\t\x12\x0c\n\x04pair\x18\x03 \x01(\t')
+  serialized_pb=_b('\n\x10management.proto\x12\x11wishful_upis.mgmt\"e\n\x07MsgDesc\x12\x10\n\x08msg_type\x18\x01 \x02(\t\x12\x11\n\texec_time\x18\x02 \x01(\t\x12\x16\n\x0etransaction_id\x18\x03 \x01(\t\x12\x0c\n\x04uuid\x18\x04 \x01(\t\x12\x0f\n\x07msg_set\x18\x05 \x01(\x08\"\xb4\x01\n\nNewNodeMsg\x12\x12\n\nagent_uuid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04info\x18\x03 \x01(\t\x12\x0f\n\x07modules\x18\x04 \x03(\t\x12;\n\nattributes\x18\x05 \x03(\x0b\x32\'.wishful_upis.mgmt.NewNodeMsg.Attribute\x1a(\n\tAttribute\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"Y\n\nNewNodeAck\x12\x0e\n\x06status\x18\x01 \x02(\x08\x12\x17\n\x0f\x63ontroller_uuid\x18\x02 \x01(\t\x12\x12\n\nagent_uuid\x18\x03 \x01(\t\x12\x0e\n\x06topics\x18\x04 \x03(\t\"1\n\x0bNodeExitMsg\x12\x12\n\nagent_uuid\x18\x01 \x02(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t\"K\n\x17\x43ontrollerDiscoveredMsg\x12\x11\n\tdown_link\x18\x01 \x01(\t\x12\x0f\n\x07up_link\x18\x02 \x01(\t\x12\x0c\n\x04pair\x18\x03 \x01(\t\"!\n\x10\x45xampleModuleReq\x12\r\n\x05hello\x18\x01 \x01(\t\"!\n\x10\x45xampleModuleAck\x12\r\n\x05hello\x18\x01 \x02(\t')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -228,6 +228,43 @@ _NEWNODEACK = _descriptor.Descriptor(
 )
 
 
+_NODEEXITMSG = _descriptor.Descriptor(
+  name='NodeExitMsg',
+  full_name='wishful_upis.mgmt.NodeExitMsg',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='agent_uuid', full_name='wishful_upis.mgmt.NodeExitMsg.agent_uuid', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='reason', full_name='wishful_upis.mgmt.NodeExitMsg.reason', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=416,
+  serialized_end=465,
+)
+
+
 _CONTROLLERDISCOVEREDMSG = _descriptor.Descriptor(
   name='ControllerDiscoveredMsg',
   full_name='wishful_upis.mgmt.ControllerDiscoveredMsg',
@@ -267,8 +304,68 @@ _CONTROLLERDISCOVEREDMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=416,
-  serialized_end=491,
+  serialized_start=467,
+  serialized_end=542,
+)
+
+
+_EXAMPLEMODULEREQ = _descriptor.Descriptor(
+  name='ExampleModuleReq',
+  full_name='wishful_upis.mgmt.ExampleModuleReq',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='hello', full_name='wishful_upis.mgmt.ExampleModuleReq.hello', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=544,
+  serialized_end=577,
+)
+
+
+_EXAMPLEMODULEACK = _descriptor.Descriptor(
+  name='ExampleModuleAck',
+  full_name='wishful_upis.mgmt.ExampleModuleAck',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='hello', full_name='wishful_upis.mgmt.ExampleModuleAck.hello', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=579,
+  serialized_end=612,
 )
 
 _NEWNODEMSG_ATTRIBUTE.containing_type = _NEWNODEMSG
@@ -276,7 +373,10 @@ _NEWNODEMSG.fields_by_name['attributes'].message_type = _NEWNODEMSG_ATTRIBUTE
 DESCRIPTOR.message_types_by_name['MsgDesc'] = _MSGDESC
 DESCRIPTOR.message_types_by_name['NewNodeMsg'] = _NEWNODEMSG
 DESCRIPTOR.message_types_by_name['NewNodeAck'] = _NEWNODEACK
+DESCRIPTOR.message_types_by_name['NodeExitMsg'] = _NODEEXITMSG
 DESCRIPTOR.message_types_by_name['ControllerDiscoveredMsg'] = _CONTROLLERDISCOVEREDMSG
+DESCRIPTOR.message_types_by_name['ExampleModuleReq'] = _EXAMPLEMODULEREQ
+DESCRIPTOR.message_types_by_name['ExampleModuleAck'] = _EXAMPLEMODULEACK
 
 MsgDesc = _reflection.GeneratedProtocolMessageType('MsgDesc', (_message.Message,), dict(
   DESCRIPTOR = _MSGDESC,
@@ -307,12 +407,33 @@ NewNodeAck = _reflection.GeneratedProtocolMessageType('NewNodeAck', (_message.Me
   ))
 _sym_db.RegisterMessage(NewNodeAck)
 
+NodeExitMsg = _reflection.GeneratedProtocolMessageType('NodeExitMsg', (_message.Message,), dict(
+  DESCRIPTOR = _NODEEXITMSG,
+  __module__ = 'management_pb2'
+  # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.NodeExitMsg)
+  ))
+_sym_db.RegisterMessage(NodeExitMsg)
+
 ControllerDiscoveredMsg = _reflection.GeneratedProtocolMessageType('ControllerDiscoveredMsg', (_message.Message,), dict(
   DESCRIPTOR = _CONTROLLERDISCOVEREDMSG,
   __module__ = 'management_pb2'
   # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.ControllerDiscoveredMsg)
   ))
 _sym_db.RegisterMessage(ControllerDiscoveredMsg)
+
+ExampleModuleReq = _reflection.GeneratedProtocolMessageType('ExampleModuleReq', (_message.Message,), dict(
+  DESCRIPTOR = _EXAMPLEMODULEREQ,
+  __module__ = 'management_pb2'
+  # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.ExampleModuleReq)
+  ))
+_sym_db.RegisterMessage(ExampleModuleReq)
+
+ExampleModuleAck = _reflection.GeneratedProtocolMessageType('ExampleModuleAck', (_message.Message,), dict(
+  DESCRIPTOR = _EXAMPLEMODULEACK,
+  __module__ = 'management_pb2'
+  # @@protoc_insertion_point(class_scope:wishful_upis.mgmt.ExampleModuleAck)
+  ))
+_sym_db.RegisterMessage(ExampleModuleAck)
 
 
 # @@protoc_insertion_point(module_scope)
