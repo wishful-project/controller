@@ -11,6 +11,9 @@ Options:
    -f                  foo
    --config configFile config file path
 
+Example:
+   ./wishful_simple_local_controller -v --config ./config.yaml 
+
 Other options:
    -h, --help          show this help message and exit
    -q, --quiet         print less text
@@ -18,8 +21,11 @@ Other options:
    --version           show version and exit
 """
 
+import datetime
 import logging
 import wishful_upis
+from wishful_upis.msgs.management_pb2 import *
+from wishful_upis.msgs.msg_helper import get_msg_type
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universität Berlin"
@@ -27,12 +33,48 @@ __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
+
+controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
+
+
+@controller.add_msg_callback(get_msg_type(NewNodeMsg), "routers")
+def printNodeName(group, nodeId, message):
+    rcv = NewNodeMsg()
+    rcv.ParseFromString(message)
+    print "New Node:: Group : {0} NodeID : {1} Name : {2}  Info : {3}".format(group, str(rcv.agent_uuid), rcv.name, rcv.info)
+
+    msg_type = "RADIO" 
+    msg = "SET_CHANNEL"
+    controller.send(nodeId, msg, msg_type=msg_type)
+
+
+@controller.add_msg_callback("ATH9K_RESPONSE", "routers")
+def ath9k_reponse(group, nodeId, message):
+    msg = message
+    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, msg)
+    
+    msg_type = "PERFORMANCE_TEST"
+    msg = "START_SERVER"
+    controller.send(nodeId, msg, msg_type=msg_type, delay=5)
+
+
+@controller.add_msg_callback("IPERF_RESPONSE", "routers")
+def iperf_reponse(group, nodeId, message):
+    msg = message
+    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, msg)
+    
+    msg_type = "RADIO" 
+    msg = "SET_CHANNEL"
+    exec_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
+    controller.send(nodeId, msg, msg_type=msg_type, exec_time=exec_time)
+
+
+
 def main(args):
     log = logging.getLogger('wishful_agent.main')
     log.debug(args)
 
     config_file_path = args['--config']
-    controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
     controller.load_modules(controller.read_config_file(path=config_file_path))
 
     controller.run()

@@ -24,6 +24,8 @@ class Controller(object):
         self.myId = str(self.myUuid)
         self.modules = {}
 
+        self.callbacks = {}
+
         self.nodes = []
         self.groups = []
         self.msg_type = {} # 'full name': [(group, callback)]
@@ -81,10 +83,14 @@ class Controller(object):
         new_module = ControllerModule(name, path, args)
         return new_module
 
-    def add_callback(self, group, callback):
-        # assert callable(callback)
-        self.log.debug("Added callback {:s} for group {:s}".format(callback, group))
-        pass
+    def add_msg_callback(self, msg_type, group, **options):
+        def decorator(callback):
+            self.set_callback(msg_type, group, callback, **options)
+            return callback
+        return decorator
+
+    def set_callback(self, msg_type, group, callback, **options):
+        self.callbacks[msg_type] = callback
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
@@ -154,55 +160,58 @@ class Controller(object):
         #reschedule agent delete function in scheduler
         pass
 
+    def send(self, group, msg, msg_type=None, delay=None, exec_time=None):
+        self.log.debug("Controller Sends message".format())
+
+        if group in self.nodes or group in self.groups:
+            msgDesc = MsgDesc()
+            
+            if msg_type:  
+                msgDesc.msg_type = msg_type
+                #TODO: else get msg type from msg but check if not string
+
+            if delay:
+                msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
+
+            if exec_time:
+                msgDesc.exec_time = str(exec_time)
+
+            self.log.debug("Controller sends message: {0}::{1}::{2}".format(group, msgDesc.msg_type, msg))
+            msgContainer = []
+            msgContainer.append(str(group))
+            msgContainer.append(msgDesc.SerializeToString())
+            msgContainer.append(msg)
+            self.dl_socket.send_multipart(msgContainer)
+
+
     def process_msgs(self):
-        i = 0
         while True:
-            self.log.debug("NEXT ITERATION".format())
             socks = dict(self.poller.poll())
+            if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
+                try:
+                    msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
+                except zmq.ZMQError:
+                    break
 
-            while True:
-                if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
-                    try:
-                        msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
-                    except zmq.ZMQError:
-                        break
+                assert len(msgContainer) == 3
+                group = msgContainer[0]
+                msgDesc = MsgDesc()
+                msgDesc.ParseFromString(msgContainer[1])
+                msg = msgContainer[2]
 
-                    assert len(msgContainer) == 3
-                    group = msgContainer[0]
-                    msgDesc = MsgDesc()
-                    msgDesc.ParseFromString(msgContainer[1])
-                    msg = msgContainer[2]
-
-                    self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
-                    if msgDesc.msg_type == get_msg_type(NewNodeMsg):
-                        self.add_new_node(msgContainer)
-                    elif msgDesc.msg_type == get_msg_type(HelloMsg):
-                        self.serve_hello_msg(msgContainer)
-                    elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
-                        self.remove_new_node(msgContainer)
-                    else:
-                        self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
-
-            if len(self.nodes):
-                self.log.debug("Sends new command")
-                if i % 2 == 1:
-                    group = self.nodes[0]
-                    msgDesc.Clear()
-                    msgDesc.msg_type = "RADIO"
-                    msg = "SET_CHANNEL"
+                self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
+                if msgDesc.msg_type == get_msg_type(NewNodeMsg):
+                    self.add_new_node(msgContainer)
+                elif msgDesc.msg_type == get_msg_type(HelloMsg):
+                    self.serve_hello_msg(msgContainer)
+                elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
+                    self.remove_new_node(msgContainer)
                 else:
-                    group = self.nodes[0]
-                    msgDesc.Clear()
-                    msgDesc.msg_type = "PERFORMANCE_TEST"
-                    msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=2))
-                    msg = "START_SERVER"
+                    self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
 
-                i += 1
+                if msgDesc.msg_type in self.callbacks:
+                    self.callbacks[msgDesc.msg_type](group, msgDesc.uuid, msg)
 
-                self.log.debug("Controller sends message: {0}::{1}".format(msgDesc.msg_type, msg))
-                msgContainer = [group, msgDesc.SerializeToString(), msg]
-                self.dl_socket.send_multipart(msgContainer)
-            time.sleep(2)
 
     def run(self):
         self.log.debug("Controller starts".format())
@@ -218,6 +227,8 @@ class Controller(object):
             self.log.debug("Exit all modules' subprocesses")
             for name, module in self.modules.iteritems():
                 module.exit()
+            self.ul_socket.setsockopt(zmq.LINGER, 0)
+            self.dl_socket.setsockopt(zmq.LINGER, 0)
             self.ul_socket.close()
             self.dl_socket.close()
             self.context.term()
