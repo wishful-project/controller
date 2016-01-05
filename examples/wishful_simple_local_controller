@@ -48,7 +48,7 @@ def printNodeName(group, nodeId, message):
     controller.send(nodeId, msg, msg_type=msg_type)
 
 
-@controller.add_msg_callback("ATH9K_RESPONSE", "routers")
+@controller.add_msg_callback("SET_CHANNEL_RESPONSE", "routers")
 def ath9k_reponse(group, nodeId, message):
     msg = message
     print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, msg)
