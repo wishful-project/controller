@@ -8,6 +8,7 @@ import datetime
 from controller_module import *
 from msgs.management_pb2 import *
 from msgs.msg_helper import get_msg_type
+import radio
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -26,7 +27,7 @@ class Controller(object):
 
         self.callbacks = {}
 
-        self.nodes = []
+        self._nodes = []
         self.groups = []
         self.msg_type = {} # 'full name': [(group, callback)]
         self.echoMsgInterval = 3
@@ -45,6 +46,26 @@ class Controller(object):
 
         #register UL socket in poller
         self.poller.register(self.ul_socket, zmq.POLLIN)
+
+        #UPIs
+        self.radio = radio.upi_radio.UPIRadio(self)
+        #self.network = network.upi_network.UPINetwork(self)
+
+        self._scope = None
+        self._exec_time = None
+        self._delay = None
+
+    def nodes(self, nodelist):
+        self._scope = nodelist
+        return self
+
+    def exec_time(self, exec_time):
+        self._exec_time = exec_time
+        return self
+
+    def delay(self, delay):
+        self._delay = delay
+        return self
 
     def read_config_file(self, path=None):
         self.log.debug("Path to module: {0}".format(path))
@@ -102,12 +123,12 @@ class Controller(object):
         agentName = msg.name
         agentInfo = msg.info
 
-        if agentId in self.nodes:
+        if agentId in self._nodes:
             self.log.debug("Already known Agent UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
             return
 
         self.log.debug("Controller adds new node with UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
-        self.nodes.append(agentId)
+        self._nodes.append(agentId)
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
 
         group = agentId
@@ -134,8 +155,8 @@ class Controller(object):
         reason = msg.reason
 
         self.log.debug("Controller removes new node with UUID: {0}, Reason: {1}".format(agentId, reason))
-        if agentId in self.nodes:
-            self.nodes.remove(agentId)
+        if agentId in self._nodes:
+            self._nodes.remove(agentId)
 
     def send_hello_msg_to_controller(self, nodeId):
         self.log.debug("Controller sends HelloMsg to agent")
@@ -163,7 +184,14 @@ class Controller(object):
     def send(self, group, msg, msg_type=None, delay=None, exec_time=None):
         self.log.debug("Controller Sends message".format())
 
-        if group in self.nodes or group in self.groups:
+        if not group:
+            group = self._scope
+        if not exec_time:
+            exec_time = self._exec_time
+        if not delay:
+            delay = self._delay
+
+        if group in self._nodes or group in self.groups:
             msgDesc = MsgDesc()
             
             if msg_type:  

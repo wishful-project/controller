@@ -33,7 +33,6 @@ __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
-
 controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
 
 
@@ -41,33 +40,26 @@ controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.
 def printNodeName(group, nodeId, message):
     rcv = NewNodeMsg()
     rcv.ParseFromString(message)
-    print "New Node:: Group : {0} NodeID : {1} Name : {2}  Info : {3}".format(group, str(rcv.agent_uuid), rcv.name, rcv.info)
 
-    msg_type = "RADIO" 
-    msg = "SET_CHANNEL"
-    controller.send(nodeId, msg, msg_type=msg_type)
+    print "New Node:: Group : {0} NodeID : {1} Name : {2}  Info : {3}".format(
+                                group, str(rcv.agent_uuid), rcv.name, rcv.info)
+
+    controller.nodes(nodeId).radio.set_channel(11)
 
 
 @controller.add_msg_callback("SET_CHANNEL_RESPONSE", "routers")
 def ath9k_reponse(group, nodeId, message):
-    msg = message
-    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, msg)
+    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, message)
     
-    msg_type = "PERFORMANCE_TEST"
-    msg = "START_SERVER"
-    controller.send(nodeId, msg, msg_type=msg_type, delay=5)
+    controller.nodes(nodeId).delay(5).radio.start_server()
 
 
 @controller.add_msg_callback("IPERF_RESPONSE", "routers")
 def iperf_reponse(group, nodeId, message):
-    msg = message
-    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, msg)
+    print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, message)
     
-    msg_type = "RADIO" 
-    msg = "SET_CHANNEL"
     exec_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
-    controller.send(nodeId, msg, msg_type=msg_type, exec_time=exec_time)
-
+    controller.nodes(nodeId).exec_time(exec_time).radio.set_channel(11)
 
 
 def main(args):
