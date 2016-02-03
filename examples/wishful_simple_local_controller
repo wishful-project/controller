@@ -24,6 +24,7 @@ Other options:
 import datetime
 import logging
 import wishful_upis
+import gevent
 from wishful_upis.msgs.management_pb2 import *
 from wishful_upis.msgs.msg_helper import get_msg_type
 
@@ -34,6 +35,7 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
 
+log = logging.getLogger('wishful_agent.main')
 controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
 
 
@@ -71,13 +73,18 @@ def iperf_reponse(group, nodeId, message):
 
 
 def main(args):
-    log = logging.getLogger('wishful_agent.main')
     log.debug(args)
+    controller.start()
 
     config_file_path = args['--config']
     controller.load_modules(controller.read_config_file(path=config_file_path))
 
-    controller.run()
+    #controller.run()
+    
+    #control loop
+    while True:
+        gevent.sleep(5)
+        print "Waiting"
 
 
 if __name__ == "__main__":

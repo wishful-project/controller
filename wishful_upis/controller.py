@@ -1,10 +1,15 @@
 import logging
 import time
 import sys
-import zmq
+#import zmq
+import zmq.green as zmq
 import uuid
 import yaml
 import datetime
+import gevent
+from gevent import Greenlet
+from gevent.event import AsyncResult
+
 from controller_module import *
 from msgs.management_pb2 import *
 from msgs.msg_helper import get_msg_type
@@ -14,8 +19,10 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-class Controller(object):
+        
+class Controller(Greenlet):
     def __init__(self, dl, ul):
+        Greenlet.__init__(self)
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
@@ -45,6 +52,31 @@ class Controller(object):
 
         #register UL socket in poller
         self.poller.register(self.ul_socket, zmq.POLLIN)
+
+    def stop(self):
+        self.log.debug("Exit all modules' subprocesses")
+        for name, module in self.modules.iteritems():
+            module.exit()
+        self.ul_socket.setsockopt(zmq.LINGER, 0)
+        self.dl_socket.setsockopt(zmq.LINGER, 0)
+        self.ul_socket.close()
+        self.dl_socket.close()
+        self.context.term()
+
+    def _run(self):
+        self.log.debug("Controller starts".format())
+ 
+        self.running = True
+        while self.running:
+            try:
+                self.process_msgs()
+            except KeyboardInterrupt:
+                self.log.debug("Controller exits")
+            except:
+                self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
+            finally:
+                self.stop()
+
 
     def read_config_file(self, path=None):
         self.log.debug("Path to module: {0}".format(path))
@@ -213,7 +245,7 @@ class Controller(object):
                     self.callbacks[msgDesc.msg_type](group, msgDesc.uuid, msg)
 
 
-    def run(self):
+    def test_run(self):
         self.log.debug("Controller starts".format())
         try:
             self.process_msgs()
