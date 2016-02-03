@@ -1,10 +1,15 @@
 import logging
 import time
 import sys
-import zmq
+#import zmq
+import zmq.green as zmq
 import uuid
 import yaml
 import datetime
+import gevent
+from gevent import Greenlet
+from gevent.event import AsyncResult
+
 from controller_module import *
 from msgs.management_pb2 import *
 from msgs.msg_helper import get_msg_type
@@ -15,8 +20,10 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-class Controller(object):
+        
+class Controller(Greenlet):
     def __init__(self, dl, ul):
+        Greenlet.__init__(self)
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
@@ -54,6 +61,29 @@ class Controller(object):
         self._scope = None
         self._exec_time = None
         self._delay = None
+        self._timeout = None
+        self._blocking = False
+        self._callback = None
+        #container for blocking calls
+        self._asyncResults = {}
+
+    def stop(self):
+        self.running = False
+        self.log.debug("Exit all modules' subprocesses")
+        for name, module in self.modules.iteritems():
+            module.exit()
+        self.ul_socket.setsockopt(zmq.LINGER, 0)
+        self.dl_socket.setsockopt(zmq.LINGER, 0)
+        self.ul_socket.close()
+        self.dl_socket.close()
+        self.context.term()
+
+    def _run(self):
+        self.log.debug("Controller starts".format())
+
+        self.running = True
+        while self.running:
+            self.process_msgs()
 
     def nodes(self, nodelist):
         self._scope = nodelist
@@ -65,6 +95,18 @@ class Controller(object):
 
     def delay(self, delay):
         self._delay = delay
+        return self
+
+    def timeout(self, value):
+        self._timeout = value
+        return self
+
+    def blocking(self, value=False):
+        self._blocking = value
+        return self
+
+    def callback(self, callback):
+        self._callback = callback
         return self
 
     def read_config_file(self, path=None):
@@ -213,35 +255,37 @@ class Controller(object):
 
 
     def process_msgs(self):
-        while True:
-            socks = dict(self.poller.poll())
-            if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
-                try:
-                    msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
-                except zmq.ZMQError:
-                    break
+        socks = dict(self.poller.poll())
+        if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
+            try:
+                msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
+            except zmq.ZMQError:
+                raise zmq.ZMQError
 
-                assert len(msgContainer) == 3
-                group = msgContainer[0]
-                msgDesc = MsgDesc()
-                msgDesc.ParseFromString(msgContainer[1])
-                msg = msgContainer[2]
+            assert len(msgContainer) == 3
+            group = msgContainer[0]
+            msgDesc = MsgDesc()
+            msgDesc.ParseFromString(msgContainer[1])
+            msg = msgContainer[2]
 
-                self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
-                if msgDesc.msg_type == get_msg_type(NewNodeMsg):
-                    self.add_new_node(msgContainer)
-                elif msgDesc.msg_type == get_msg_type(HelloMsg):
-                    self.serve_hello_msg(msgContainer)
-                elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
-                    self.remove_new_node(msgContainer)
-                else:
-                    self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
+            self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
+            if msgDesc.msg_type == get_msg_type(NewNodeMsg):
+                self.add_new_node(msgContainer)
+            elif msgDesc.msg_type == get_msg_type(HelloMsg):
+                self.serve_hello_msg(msgContainer)
+            elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
+                self.remove_new_node(msgContainer)
+            else:
+                self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
 
+            if "blocking" in self._asyncResults:
+                self._asyncResults["blocking"].set(msg)
+            else:
                 if msgDesc.msg_type in self.callbacks:
                     self.callbacks[msgDesc.msg_type](group, msgDesc.uuid, msg)
 
 
-    def run(self):
+    def test_run(self):
         self.log.debug("Controller starts".format())
         try:
             self.process_msgs()

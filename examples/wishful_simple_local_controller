@@ -24,6 +24,7 @@ Other options:
 import datetime
 import logging
 import wishful_upis
+import gevent
 from wishful_upis.msgs.management_pb2 import *
 from wishful_upis.msgs.msg_helper import get_msg_type
 
@@ -33,7 +34,10 @@ __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
+
+log = logging.getLogger('wishful_agent.main')
 controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
+nodes = []
 
 
 @controller.add_msg_callback(get_msg_type(NewNodeMsg), "routers")
@@ -43,15 +47,14 @@ def printNodeName(group, nodeId, message):
 
     print "New Node:: Group : {0} NodeID : {1} Name : {2}  Info : {3}".format(
                                 group, str(rcv.agent_uuid), rcv.name, rcv.info)
-
+    nodes.append(nodeId)
     controller.nodes(nodeId).radio.set_channel(11)
-
 
 @controller.add_msg_callback("SET_CHANNEL_RESPONSE", "routers")
 def ath9k_reponse(group, nodeId, message):
     print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, message)
     
-    controller.nodes(nodeId).delay(5).radio.start_server()
+    controller.nodes(nodeId).delay(3).radio.start_server()
 
 
 @controller.add_msg_callback("IPERF_RESPONSE", "routers")
@@ -59,17 +62,28 @@ def iperf_reponse(group, nodeId, message):
     print "Received response : Group:{0}, NodeId:{1}, msg:{2}".format(group, nodeId, message)
     
     exec_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
-    controller.nodes(nodeId).exec_time(exec_time).radio.set_channel(11)
+    controller.nodes(nodeId).exec_time(exec_time).radio.set_channel(4)
 
+
+def printResponse(group, nodeId, message):
+    print "Received response : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, message) 
 
 def main(args):
-    log = logging.getLogger('wishful_agent.main')
     log.debug(args)
 
     config_file_path = args['--config']
     controller.load_modules(controller.read_config_file(path=config_file_path))
+    controller.start()
+   
+    #control loop
+    while True:
+        gevent.sleep(10)
+        print "Connected nodes", nodes
+        if nodes:
+            result = controller.nodes(nodes[0]).blocking(True).radio.set_channel(11)
+            print result
 
-    controller.run()
+            #controller.nodes(nodes[0]).callback(printResponse).radio.set_channel(11)
 
 
 if __name__ == "__main__":
@@ -95,4 +109,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level,
         format='%(asctime)s - %(name)s.%(funcName)s() - %(levelname)s - %(message)s')
 
-    main(args)
+    try:
+        main(args)
+    except KeyboardInterrupt:
+        log.debug("Controller exits")
+    except:
+        log.debug("Unexpected error:".format(sys.exc_info()[0]))
+    finally:
+        log.debug("Exit")
+        controller.kill()
