@@ -2,10 +2,10 @@
 
 discovery_module:
     type : python
-    path : ../../wishful_module_discovery/bin/discovery_pyre_controller
+    path : ../../modules/discovery/bin/discovery_pyre_controller
     args : ['']
 
 synchronization_module:
     type : python
-    path : ../../wishful_module_ptp/bin/ptp_server.py
+    path : ../../modules/ptp/bin/ptp_server.py
     args : ['-i eth0']
