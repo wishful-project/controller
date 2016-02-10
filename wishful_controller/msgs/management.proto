@@ -1,4 +1,4 @@
-package wishful_upis.mgmt;
+package wishful_controller.mgmt;
 
 message MsgDesc {
 	required string msg_type = 1;

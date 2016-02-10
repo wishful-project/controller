@@ -1,5 +1,5 @@
 // syntax = "proto3";
-package wishful_upis.network;
+package wishful_controller.network;
 
 message iperf {
     optional string proto = 1;

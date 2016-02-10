@@ -33,9 +33,9 @@ def generate_proto(source):
 
 # List of all .proto files
 proto_src = [
-    'wishful_upis/msgs/management.proto',
-    'wishful_upis/msgs/radio.proto',
-    'wishful_upis/msgs/network.proto'
+    'wishful_controller/msgs/management.proto',
+    'wishful_controller/msgs/radio.proto',
+    'wishful_controller/msgs/network.proto'
     ]
 
 #class build_py(_build_py):
@@ -56,12 +56,12 @@ proto_src = [
 #    _clean.run(self)
 
 setup(
-    name='wishful_upis',
+    name='wishful_controller',
     version='0.1.0',
     packages=[
-        'wishful_upis',
-        'wishful_upis.radio',
-        'wishful_upis.msgs',
+        'wishful_controller',
+        'wishful_controller.radio',
+        'wishful_controller.msgs',
         ],
     url='http://www.wishful-project.eu/software',
     license='',

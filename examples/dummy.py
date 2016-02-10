@@ -24,7 +24,7 @@ __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 import logging
-import wishful_upis as upi
+import wishful_controller as upi
 
 ctrl = upi.Controller()
 

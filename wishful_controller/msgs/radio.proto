@@ -1,5 +1,5 @@
 // syntax = "proto3";
-package wishful_upis.radio;
+package wishful_controller.radio;
 
 message IEEE80211 {
     optional int32 channel = 1;

@@ -23,10 +23,10 @@ Other options:
 
 import datetime
 import logging
-import wishful_upis
+import wishful_controller
 import gevent
-from wishful_upis.msgs.management_pb2 import *
-from wishful_upis.msgs.msg_helper import get_msg_type
+from wishful_controller.msgs.management_pb2 import *
+from wishful_controller.msgs.msg_helper import get_msg_type
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universität Berlin"
@@ -36,7 +36,7 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
 log = logging.getLogger('wishful_agent.main')
-controller = wishful_upis.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
+controller = wishful_controller.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
 nodes = []
 
 
