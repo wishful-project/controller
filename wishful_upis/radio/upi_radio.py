@@ -7,12 +7,17 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-def _clean_after_use(fn):
+def _add_function(fn):
     def wrapped(self, *args, **kwargs):
+        
+        #TODO: add assert, blocking and callback cannot be at the same time
+
         if self._ctrl._blocking:
             self._ctrl._asyncResults["blocking"] = AsyncResult()
 
-        fn(self, *args, **kwargs)
+        #execute function
+        self._ctrl.send(self._ctrl._scope, fn.__name__, msg_type=self._msg_type)
+
         self._ctrl._scope = None
         self._ctrl._exec_time = None
         self._ctrl._delay = None
@@ -25,6 +30,9 @@ def _clean_after_use(fn):
             del self._ctrl._asyncResults["blocking"] 
             return response
 
+        if self._ctrl._callback:
+            self._ctrl._callback()
+
     return wrapped
 
 class UPIRadio(object):
@@ -32,24 +40,26 @@ class UPIRadio(object):
         self._ctrl = ctrl
         self._msg_type = "RADIO"
 
-    @_clean_after_use
+    @_add_function
     def set_channel(self, ch):
         '''
         set_channel 
         ch - channel to set
         '''
-        #pass
-        cmd = "set_channel"
-        self._ctrl.send(None, cmd, msg_type=self._msg_type)
+        pass
+        
 
-    @_clean_after_use
-    def set_power(self, pwr=None):
-        return 0
+    @_add_function
+    def set_power(self, pwr):
+        '''
+        func desc
+        '''
+        pass
 
-    @_clean_after_use
+
+    @_add_function
     def start_server(self):
         '''
         func desc
         '''
-        msg = "start_server"
-        self._ctrl.send(None, msg, msg_type=self._msg_type)
+        pass
