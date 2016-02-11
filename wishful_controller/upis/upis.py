@@ -11,7 +11,6 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-
 DefaultArgSpec = namedtuple('DefaultArgSpec', 'has_default default_value')
 
 def _get_default_arg(args, defaults, arg_index):
@@ -67,15 +66,46 @@ def get_method_sig(method):
         arg_index += 1
     return "%s(%s)" % (method.__name__, ", ".join(args))
 
+class CtrTest(object):
+    def __init__(self):
+        self._blocking = False
+        self._asyncResults = None
+        self._scope = "test"
+        self._exec_time = "11:23:23"
+        self._delay = None
+        self._timeout = 5
+        self._callback = False
+
+    def send(self, scope, upi_type, fname):
+        print scope, upi_type, fname
+
 @decorator.decorator
 def _add_function(fn, *args, **kwargs):
     def wrapped(self, *args, **kwargs):
-        print dir(self)
-        print self.__dict__
-        print args
-        print kwargs
-        print self._ctrl
-        print self._msg_type
+        #TODO: add assert, blocking and callback cannot be at the same time
+
+        if self._ctrl._blocking:
+            self._ctrl._asyncResults["blocking"] = AsyncResult()
+
+        #execute function
+        print args, kwargs
+        self._ctrl.send(self._ctrl._scope, upi_type=self._msg_type, fname=fn.__name__)
+
+        self._ctrl._scope = None
+        self._ctrl._exec_time = None
+        self._ctrl._delay = None
+        self._ctrl._timeout = None
+        self._ctrl._callback = None
+
+        if self._ctrl._blocking:
+            self._ctrl._blocking = False
+            response = self._ctrl._asyncResults["blocking"].get()
+            del self._ctrl._asyncResults["blocking"] 
+            return response
+
+        if self._ctrl._callback:
+            self._ctrl._callback()
+
         return wrapped
     return wrapped(*args, **kwargs)
 
@@ -157,18 +187,19 @@ class UpiBuilder(object):
 
 
 if __name__ == "__main__":
-    builder = UpiBuilder(1)
+    ctrl = CtrTest()
+    builder = UpiBuilder(ctrl)
     radio = builder.create_radio()
-    print(inspect.getargspec(radio.set_channel))
-    print radio.set_channel
-    radio.set_channel()
+    #print(inspect.getargspec(radio.set_channel))
+    #print radio.set_channel
+    radio.set_channel(2)
 
     net = builder.create_net()
-    print(inspect.getargspec(net.start_iperf_server))
-    print net.start_iperf_server
+    #print(inspect.getargspec(net.start_iperf_server))
+    #print net.start_iperf_server
     net.start_iperf_server()
 
     mgmt = builder.create_mgmt()
-    print(inspect.getargspec(mgmt.start_local_control_loop))
-    print mgmt.start_local_control_loop
+    #print(inspect.getargspec(mgmt.start_local_control_loop))
+    #print mgmt.start_local_control_loop
     mgmt.start_local_control_loop()
