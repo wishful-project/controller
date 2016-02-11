@@ -83,7 +83,7 @@ def main(args):
             result = controller.nodes(nodes[0]).blocking(True).radio.set_channel(11)
             print result
 
-            controller.nodes(nodes[0]).callback(print_set_channel_response).radio.set_channel(11)
+            #controller.nodes(nodes[0]).callback(print_set_channel_response).radio.set_channel(11)
 
 
 if __name__ == "__main__":
@@ -109,12 +109,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level,
         format='%(asctime)s - %(name)s.%(funcName)s() - %(levelname)s - %(message)s')
 
-    try:
-        main(args)
-    except KeyboardInterrupt:
-        log.debug("Controller exits")
-    except:
-        log.debug("Unexpected error:".format(sys.exc_info()[0]))
-    finally:
-        log.debug("Exit")
-        controller.kill()
+    main(args)
+    if 0:
+        try:
+            main(args)
+        except KeyboardInterrupt:
+            log.debug("Controller exits")
+        except:
+            log.debug("Unexpected error:".format(sys.exc_info()[0]))
+        finally:
+            log.debug("Exit")
+            controller.kill()

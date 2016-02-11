@@ -226,8 +226,11 @@ class Controller(Greenlet):
         #reschedule agent delete function in scheduler
         pass
 
-    def send(self, group, msg, msg_type=None, delay=None, exec_time=None):
+
+    def send(self, group, upi_type, fname=None, delay=None, exec_time=None, timeout=None, *args, **kwargs):
         self.log.debug("Controller Sends message".format())
+        
+        print upi_type, fname, args, kwargs
 
         if not group:
             group = self._scope
@@ -239,9 +242,9 @@ class Controller(Greenlet):
         if group in self._nodes or group in self.groups:
             msgDesc = MsgDesc()
             
-            if msg_type:  
-                msgDesc.msg_type = msg_type
-                #TODO: else get msg type from msg but check if not string
+            if upi_type:  
+                msgDesc.msg_type = upi_type
+                #TODO: else get fname type from fname but check if not string
 
             if delay:
                 msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
@@ -249,11 +252,11 @@ class Controller(Greenlet):
             if exec_time:
                 msgDesc.exec_time = str(exec_time)
 
-            self.log.debug("Controller sends message: {0}::{1}::{2}".format(group, msgDesc.msg_type, msg))
+            self.log.debug("Controller sends message: {0}::{1}::{2}".format(group, msgDesc.msg_type, fname))
             msgContainer = []
             msgContainer.append(str(group))
             msgContainer.append(msgDesc.SerializeToString())
-            msgContainer.append(msg)
+            msgContainer.append(fname)
             self.dl_socket.send_multipart(msgContainer)
 
 
@@ -290,20 +293,22 @@ class Controller(Greenlet):
 
     def test_run(self):
         self.log.debug("Controller starts".format())
-        try:
-            self.process_msgs()
+        self.process_msgs()
+        if 0:
+            try:
+                self.process_msgs()
 
-        except KeyboardInterrupt:
-            self.log.debug("Controller exits")
+            except KeyboardInterrupt:
+                self.log.debug("Controller exits")
 
-        except:
-             self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
-        finally:
-            self.log.debug("Exit all modules' subprocesses")
-            for name, module in self.modules.iteritems():
-                module.exit()
-            self.ul_socket.setsockopt(zmq.LINGER, 0)
-            self.dl_socket.setsockopt(zmq.LINGER, 0)
-            self.ul_socket.close()
-            self.dl_socket.close()
-            self.context.term()
+            except:
+                 self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
+            finally:
+                self.log.debug("Exit all modules' subprocesses")
+                for name, module in self.modules.iteritems():
+                    module.exit()
+                self.ul_socket.setsockopt(zmq.LINGER, 0)
+                self.dl_socket.setsockopt(zmq.LINGER, 0)
+                self.ul_socket.close()
+                self.dl_socket.close()
+                self.context.term()

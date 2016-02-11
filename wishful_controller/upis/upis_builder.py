@@ -3,6 +3,8 @@ import inspect
 import wishful_upis
 import decorator
 from collections import namedtuple
+from gevent import Greenlet
+from gevent.event import AsyncResult
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -86,7 +88,12 @@ def _add_function(fn, *args, **kwargs):
             self._ctrl._asyncResults["blocking"] = AsyncResult()
 
         #execute function
-        self._ctrl.send(self._ctrl._scope, self._msg_type, fn.__name__, *args, **kwargs)
+        self._ctrl.send(group=self._ctrl._scope,
+                        upi_type=self._msg_type, 
+                        fname=fn.__name__,
+                        delay=self._ctrl._delay,
+                        exec_time=self._ctrl._exec_time,
+                        timeout=self._ctrl._timeout)
 
         self._ctrl._scope = None
         self._ctrl._exec_time = None
