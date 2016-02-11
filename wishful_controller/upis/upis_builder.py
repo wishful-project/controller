@@ -144,7 +144,6 @@ class UpiBuilder(object):
         sig = get_method_sig(function)
         sig = sig.split("(", 1)
         sig = sig[0] + "(self, " + sig[1]
-        
         code = "def {}: pass".format(sig)
         myGlobals = {}
         exec code in myGlobals

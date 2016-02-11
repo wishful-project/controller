@@ -62,6 +62,7 @@ setup(
         'wishful_controller',
         'wishful_controller.radio',
         'wishful_controller.msgs',
+        'wishful_controller.upis'
         ],
     url='http://www.wishful-project.eu/software',
     license='',

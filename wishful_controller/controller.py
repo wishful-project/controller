@@ -14,6 +14,7 @@ from controller_module import *
 from msgs.management_pb2 import *
 from msgs.msg_helper import get_msg_type
 import radio
+import upis
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -55,8 +56,15 @@ class Controller(Greenlet):
         self.poller.register(self.ul_socket, zmq.POLLIN)
 
         #UPIs
-        self.radio = radio.upi_radio.UPIRadio(self)
-        #self.network = network.upi_network.UPINetwork(self)
+        builder = upis.upis_builder.UpiBuilder(self)
+        self.radio = builder.create_radio()
+        self.network = builder.create_net()
+        self.mgmt = builder.create_mgmt()
+
+        #check if properly loaded
+        print upis.upis_builder.get_method_sig(self.radio.set_channel)
+        print upis.upis_builder.get_method_sig(self.network.start_iperf_client)
+        print upis.upis_builder.get_method_sig(self.mgmt.start_local_control_loop)
 
         self._scope = None
         self._exec_time = None
