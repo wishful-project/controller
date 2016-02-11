@@ -61,11 +61,6 @@ class Controller(Greenlet):
         self.network = builder.create_net()
         self.mgmt = builder.create_mgmt()
 
-        #check if properly loaded
-        print upis.upis_builder.get_method_sig(self.radio.set_channel)
-        print upis.upis_builder.get_method_sig(self.network.start_iperf_client)
-        print upis.upis_builder.get_method_sig(self.mgmt.start_local_control_loop)
-
         self._scope = None
         self._exec_time = None
         self._delay = None

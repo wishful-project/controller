@@ -58,12 +58,7 @@ proto_src = [
 setup(
     name='wishful_controller',
     version='0.1.0',
-    packages=[
-        'wishful_controller',
-        'wishful_controller.radio',
-        'wishful_controller.msgs',
-        'wishful_controller.upis'
-        ],
+    packages=find_packages(),
     url='http://www.wishful-project.eu/software',
     license='',
     author='Piotr Gawlowicz, Mikolaj Chwalisz',
