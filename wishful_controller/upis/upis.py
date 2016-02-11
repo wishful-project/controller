@@ -1,9 +1,7 @@
 import logging
 import inspect
 import wishful_upis
-import imp
 import decorator
-import inspect
 from collections import namedtuple
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
@@ -76,8 +74,8 @@ class CtrTest(object):
         self._timeout = 5
         self._callback = False
 
-    def send(self, scope, upi_type, fname):
-        print scope, upi_type, fname
+    def send(self, scope, upi_type, fname, *args, **kwargs):
+        print scope, upi_type, fname, args, kwargs
 
 @decorator.decorator
 def _add_function(fn, *args, **kwargs):
@@ -88,8 +86,7 @@ def _add_function(fn, *args, **kwargs):
             self._ctrl._asyncResults["blocking"] = AsyncResult()
 
         #execute function
-        print args, kwargs
-        self._ctrl.send(self._ctrl._scope, upi_type=self._msg_type, fname=fn.__name__)
+        self._ctrl.send(self._ctrl._scope, self._msg_type, fn.__name__, *args, **kwargs)
 
         self._ctrl._scope = None
         self._ctrl._exec_time = None
@@ -148,13 +145,11 @@ class UpiBuilder(object):
         sig = sig.split("(", 1)
         sig = sig[0] + "(self, " + sig[1]
         
-        code = """def {}: pass
-        """.format(sig)
+        code = "def {}: pass".format(sig)
+        myGlobals = {}
+        exec code in myGlobals
+        function = myGlobals[name]
 
-        module = imp.new_module('myfunctions')
-        exec code in module.__dict__
-        function = getattr(module, name)
-        del module
         decorated_fun = _add_function(function)
         return decorated_fun
 
@@ -192,12 +187,13 @@ if __name__ == "__main__":
     radio = builder.create_radio()
     #print(inspect.getargspec(radio.set_channel))
     #print radio.set_channel
-    radio.set_channel(2)
+    radio.set_channel(3)
 
     net = builder.create_net()
-    #print(inspect.getargspec(net.start_iperf_server))
-    #print net.start_iperf_server
-    net.start_iperf_server()
+    print(inspect.getargspec(net.start_iperf_client))
+    print net.start_iperf_client
+    print get_method_sig(net.start_iperf_client)
+    net.start_iperf_client(1)
 
     mgmt = builder.create_mgmt()
     #print(inspect.getargspec(mgmt.start_local_control_loop))
