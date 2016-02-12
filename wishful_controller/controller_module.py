@@ -34,7 +34,7 @@ class ControllerModule(object):
             except:
                 self.port = random.randint(5000, 10000)
 
-        self.log.debug("Server for {0} started on port: {1} ".format(self.name, self.port))
+        self.log.debug("Server for {} started on port: {} ".format(self.name, self.port))
 
     def start_module_process(self):
         cmd = [self.path,
@@ -42,7 +42,7 @@ class ControllerModule(object):
                ]
         cmd.extend(filter(None, self.args))
         self.pid = subprocess.Popen(cmd)
-        self.log.debug("Module: {0}, with args: {1}, PID: {2} started".format(self.name, self.args, self.pid.pid))
+        self.log.debug("Module: {}, with args: {}, PID: {} started".format(self.name, self.args, self.pid.pid))
 
     def exit(self):
         self.pid.kill()
@@ -50,10 +50,5 @@ class ControllerModule(object):
 
 
     def send_msg_to_module(self, msgContainer):
-        group = msgContainer[0]
-        msgType = msgContainer[1]
-        msg = msgContainer[2]
-        self.log.debug("Module: {0} sends msg: {1}::{2}".format(self.name, msgType, msg))
-        msgContainer = []
-        msgContainer = [group, msgType, msg] # module does not need to know exec time
+        self.log.debug("Module: {} sends msg".format(self.name))
         self.socket.send_multipart(msgContainer)

@@ -25,8 +25,7 @@ import datetime
 import logging
 import wishful_controller
 import gevent
-from wishful_controller.msgs.management_pb2 import *
-from wishful_controller.msgs.msg_helper import get_msg_type
+import wishful_framework as msgs
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universität Berlin"
@@ -40,9 +39,9 @@ controller = wishful_controller.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://
 nodes = []
 
 
-@controller.add_msg_callback(get_msg_type(NewNodeMsg), "routers")
+@controller.add_msg_callback(msgs.get_msg_type(msgs.NewNodeMsg), "routers")
 def printNodeName(group, nodeId, message):
-    rcv = NewNodeMsg()
+    rcv = msgs.NewNodeMsg()
     rcv.ParseFromString(message)
 
     print "New Node:: Group : {} NodeID : {} Name : {}  Info : {}".format(
@@ -50,14 +49,14 @@ def printNodeName(group, nodeId, message):
     nodes.append(nodeId)
     controller.nodes(nodeId).radio.set_channel(11)
 
-@controller.add_msg_callback("SET_CHANNEL_RESPONSE", "routers")
+@controller.add_msg_callback("set_channel", "routers")
 def ath9k_reponse(group, nodeId, message):
     print "Received response : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, message)
     
     controller.nodes(nodeId).delay(3).radio.start_server()
 
 
-@controller.add_msg_callback("IPERF_RESPONSE", "routers")
+@controller.add_msg_callback("start_server", "routers")
 def iperf_reponse(group, nodeId, message):
     print "Received response : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, message)
     

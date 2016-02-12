@@ -11,9 +11,7 @@ from gevent import Greenlet
 from gevent.event import AsyncResult
 
 from controller_module import *
-from msgs.management_pb2 import *
-from msgs.msg_helper import get_msg_type
-import radio
+import wishful_framework as msgs
 import upis
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
@@ -113,7 +111,7 @@ class Controller(Greenlet):
         return self
 
     def read_config_file(self, path=None):
-        self.log.debug("Path to module: {0}".format(path))
+        self.log.debug("Path to module: {}".format(path))
 
         with open(path, 'r') as f:
            config = yaml.load(f)
@@ -121,11 +119,11 @@ class Controller(Greenlet):
         return config
 
     def load_modules(self, config):
-        self.log.debug("Config: {0}".format(config))
+        self.log.debug("Config: {}".format(config))
         pass
 
     def load_modules(self, config):
-        self.log.debug("Config: {0}".format(config))
+        self.log.debug("Config: {}".format(config))
 
         for module_name, module_parameters in config.iteritems():
             self.add_module(
@@ -137,7 +135,7 @@ class Controller(Greenlet):
             )
 
     def add_module(self, module):
-        self.log.debug("Adding new module: {0}".format(module))
+        self.log.debug("Adding new module: {}".format(module))
         self.modules[module.name] = module
 
         #register module socket in poller
@@ -160,74 +158,77 @@ class Controller(Greenlet):
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
-        msgDesc = MsgDesc()
-        msgDesc.ParseFromString(msgContainer[1])
-        msg = NewNodeMsg()
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.ParseFromString(msgContainer[1])
+        msg = msgs.NewNodeMsg()
         msg.ParseFromString(msgContainer[2])
         agentId = str(msg.agent_uuid)
         agentName = msg.name
         agentInfo = msg.info
+        #TODO: add supported cmd list
 
         if agentId in self._nodes:
-            self.log.debug("Already known Agent UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
+            self.log.debug("Already known Agent UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
             return
 
-        self.log.debug("Controller adds new node with UUID: {0}, Name: {1}, Info: {2}".format(agentId,agentName,agentInfo))
+        self.log.debug("Controller adds new node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
         self._nodes.append(agentId)
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
 
         group = agentId
-        msgDesc.Clear()
-        msgDesc.msg_type = get_msg_type(NewNodeAck)
-        msg = NewNodeAck()
+        cmdDesc.Clear()
+        cmdDesc.type = msgs.get_msg_type(msgs.NewNodeAck)
+        cmdDesc.func_name = msgs.get_msg_type(msgs.NewNodeAck)
+        msg = msgs.NewNodeAck()
         msg.status = True
         msg.controller_uuid = self.myId
         msg.agent_uuid = agentId
         msg.topics.append("ALL")
 
-        msgContainer = [group, msgDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
         self.dl_socket.send_multipart(msgContainer)
 
     def remove_new_node(self, msgContainer):
         group = msgContainer[0]
-        msgDesc = MsgDesc()
-        msgDesc.ParseFromString(msgContainer[1])
-        msg = NodeExitMsg()
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.ParseFromString(msgContainer[1])
+        msg = msgs.NodeExitMsg()
         msg.ParseFromString(msgContainer[2])
         agentId = str(msg.agent_uuid)
         reason = msg.reason
 
-        self.log.debug("Controller removes new node with UUID: {0}, Reason: {1}".format(agentId, reason))
+        self.log.debug("Controller removes new node with UUID: {}, Reason: {}".format(agentId, reason))
         if agentId in self._nodes:
             self._nodes.remove(agentId)
 
     def send_hello_msg_to_controller(self, nodeId):
         self.log.debug("Controller sends HelloMsg to agent")
         group = nodeId
-        msgDesc = MsgDesc()
-        msgDesc.msg_type = get_msg_type(HelloMsg)
-        msg = HelloMsg()
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.type = msgs.get_msg_type(msgs.HelloMsg)
+        cmdDesc.func_name = msgs.get_msg_type(msgs.HelloMsg)
+        msg = msgs.HelloMsg()
         msg.uuid = str(self.myId)
         msg.timeout = 3 * self.echoMsgInterval
-        msgContainer = [group, msgDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
         self.dl_socket.send_multipart(msgContainer)
 
     def serve_hello_msg(self, msgContainer):
         self.log.debug("Controller received HELLO MESSAGE from agent".format())
         group = msgContainer[0]
-        msgDesc = MsgDesc()
-        msgDesc.ParseFromString(msgContainer[1])
-        msg = HelloMsg()
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.ParseFromString(msgContainer[1])
+        msg = msgs.HelloMsg()
         msg.ParseFromString(msgContainer[2])
 
         self.send_hello_msg_to_controller(str(msg.uuid))
-        #reschedule agent delete function in scheduler
+        #TODO: reschedule agent delete function in scheduler, support aspscheduler first
         pass
 
 
-    def send(self, group, upi_type, fname=None, delay=None, exec_time=None, timeout=None, *args, **kwargs):
+    def send(self, group, upi_type, fname, delay=None, exec_time=None, timeout=None, *args, **kwargs):
         self.log.debug("Controller Sends message".format())
         
         print upi_type, fname, args, kwargs
@@ -240,22 +241,22 @@ class Controller(Greenlet):
             delay = self._delay
 
         if group in self._nodes or group in self.groups:
-            msgDesc = MsgDesc()
-            
-            if upi_type:  
-                msgDesc.msg_type = upi_type
-                #TODO: else get fname type from fname but check if not string
+            cmdDesc = msgs.CmdDesc()
+            cmdDesc.type = upi_type
+            cmdDesc.func_name = fname
+            #TODO: support timeout, on controller and agent sides?
 
             if delay:
-                msgDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
+                cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
 
             if exec_time:
-                msgDesc.exec_time = str(exec_time)
+                cmdDesc.exec_time = str(exec_time)
 
-            self.log.debug("Controller sends message: {0}::{1}::{2}".format(group, msgDesc.msg_type, fname))
+            self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
             msgContainer = []
             msgContainer.append(str(group))
-            msgContainer.append(msgDesc.SerializeToString())
+            msgContainer.append(cmdDesc.SerializeToString())
+            #TODO: send args in third part of message
             msgContainer.append(fname)
             self.dl_socket.send_multipart(msgContainer)
 
@@ -270,25 +271,25 @@ class Controller(Greenlet):
 
             assert len(msgContainer) == 3
             group = msgContainer[0]
-            msgDesc = MsgDesc()
-            msgDesc.ParseFromString(msgContainer[1])
+            cmdDesc = msgs.CmdDesc()
+            cmdDesc.ParseFromString(msgContainer[1])
             msg = msgContainer[2]
 
-            self.log.debug("Controller received message: {0} from agent".format(msgDesc.msg_type))
-            if msgDesc.msg_type == get_msg_type(NewNodeMsg):
+            self.log.debug("Controller received message: {} from agent".format(cmdDesc.type))
+            if cmdDesc.type == msgs.get_msg_type(msgs.NewNodeMsg):
                 self.add_new_node(msgContainer)
-            elif msgDesc.msg_type == get_msg_type(HelloMsg):
+            elif cmdDesc.type == msgs.get_msg_type(msgs.HelloMsg):
                 self.serve_hello_msg(msgContainer)
-            elif msgDesc.msg_type == get_msg_type(NodeExitMsg):
+            elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
                 self.remove_new_node(msgContainer)
             else:
-                self.log.debug("Controller drops unknown message: {0} from agent".format(msgDesc.msg_type))
+                self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
             if "blocking" in self._asyncResults:
                 self._asyncResults["blocking"].set(msg)
             else:
-                if msgDesc.msg_type in self.callbacks:
-                    self.callbacks[msgDesc.msg_type](group, msgDesc.uuid, msg)
+                if cmdDesc.type in self.callbacks:
+                    self.callbacks[cmdDesc.type](group, cmdDesc.caller_id, msg)
 
 
     def test_run(self):
