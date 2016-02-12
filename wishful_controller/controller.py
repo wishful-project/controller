@@ -32,6 +32,8 @@ class Controller(Greenlet):
         self.modules = {}
 
         self.callbacks = {}
+        self.newNodeCallback = None
+        self.nodeExitCallback = None
 
         self._nodes = []
         self.groups = []
@@ -56,7 +58,7 @@ class Controller(Greenlet):
         #UPIs
         builder = upis.upis_builder.UpiBuilder(self)
         self.radio = builder.create_radio()
-        self.network = builder.create_net()
+        self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
 
         self._scope = None
@@ -147,14 +149,24 @@ class Controller(Greenlet):
         new_module = ControllerModule(name, path, args)
         return new_module
 
-    def add_msg_callback(self, msg_type, group, **options):
+    def new_node_callback(self, **options):
         def decorator(callback):
-            self.set_callback(msg_type, group, callback, **options)
+            self.newNodeCallback = callback
             return callback
         return decorator
 
-    def set_callback(self, msg_type, group, callback, **options):
-        self.callbacks[msg_type] = callback
+    def node_exit_callback(self, **options):
+        def decorator(callback):
+            self.nodeExitCallback = callback
+            return callback
+        return decorator
+
+    def add_callback(self, group, function, **options):
+        def decorator(callback):
+            self.log.debug("Register callback for: ", function.__name__)
+            self.callbacks[function.__name__] = callback
+            return callback
+        return decorator
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
@@ -170,6 +182,9 @@ class Controller(Greenlet):
         if agentId in self._nodes:
             self.log.debug("Already known Agent UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
             return
+
+        if self.newNodeCallback:
+            self.newNodeCallback(group, agentId, agentName, agentInfo)
 
         self.log.debug("Controller adds new node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
         self._nodes.append(agentId)
@@ -198,6 +213,9 @@ class Controller(Greenlet):
         msg.ParseFromString(msgContainer[2])
         agentId = str(msg.agent_uuid)
         reason = msg.reason
+
+        if self.nodeExitCallback:
+            self.nodeExitCallback(group, agentId, reason)
 
         self.log.debug("Controller removes new node with UUID: {}, Reason: {}".format(agentId, reason))
         if agentId in self._nodes:
@@ -229,9 +247,7 @@ class Controller(Greenlet):
 
 
     def send(self, group, upi_type, fname, delay=None, exec_time=None, timeout=None, *args, **kwargs):
-        self.log.debug("Controller Sends message".format())
-        
-        print upi_type, fname, args, kwargs
+        self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
 
         if not group:
             group = self._scope
@@ -285,11 +301,11 @@ class Controller(Greenlet):
             else:
                 self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
-            if "blocking" in self._asyncResults:
-                self._asyncResults["blocking"].set(msg)
-            else:
-                if cmdDesc.type in self.callbacks:
-                    self.callbacks[cmdDesc.type](group, cmdDesc.caller_id, msg)
+                if "blocking" in self._asyncResults:
+                    self._asyncResults["blocking"].set(msg)
+                else:
+                    if cmdDesc.func_name in self.callbacks:
+                        self.callbacks[cmdDesc.func_name](group, cmdDesc.caller_id, msg)
 
 
     def test_run(self):
