@@ -84,16 +84,18 @@ def _add_function(fn, *args, **kwargs):
     def wrapped(self, *args, **kwargs):
         #TODO: add assert, blocking and callback cannot be at the same time
 
-        if self._ctrl._blocking:
-            self._ctrl._asyncResults["blocking"] = AsyncResult()
-
         #execute function
-        self._ctrl.send(group=self._ctrl._scope,
+        callId = self._ctrl.send(group=self._ctrl._scope,
                         upi_type=self._msg_type, 
                         fname=fn.__name__,
                         delay=self._ctrl._delay,
                         exec_time=self._ctrl._exec_time,
-                        timeout=self._ctrl._timeout)
+                        timeout=self._ctrl._timeout,
+                        blocking=self._ctrl._blocking)
+
+        #TODO: move all below to controller send()
+        if self._ctrl._callback:
+            self._ctrl.callbacks[callId] = self._ctrl._callback
 
         self._ctrl._scope = None
         self._ctrl._exec_time = None
@@ -101,14 +103,11 @@ def _add_function(fn, *args, **kwargs):
         self._ctrl._timeout = None
         self._ctrl._callback = None
 
-        if self._ctrl._blocking:
+        if callId and self._ctrl._blocking:
             self._ctrl._blocking = False
-            response = self._ctrl._asyncResults["blocking"].get()
-            del self._ctrl._asyncResults["blocking"] 
+            response = self._ctrl._asyncResults[callId].get()
+            del self._ctrl._asyncResults[callId] 
             return response
-
-        if self._ctrl._callback:
-            self._ctrl._callback()
 
         return wrapped
     return wrapped(*args, **kwargs)

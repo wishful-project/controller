@@ -25,7 +25,6 @@ import datetime
 import logging
 import wishful_controller
 import gevent
-import wishful_framework as msgs
 import wishful_upis as upis
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
@@ -38,7 +37,7 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 log = logging.getLogger('wishful_agent.main')
 controller = wishful_controller.Controller(dl="tcp://127.0.0.1:8990", ul="tcp://127.0.0.1:8989")
 nodes = []
-
+#TODO: implement default callback, that is call for all incomming data
 
 @controller.new_node_callback()
 def printNodeName(group, nodeId, name, info):
@@ -54,19 +53,28 @@ def printNodeName(group, nodeId, reason):
 
 
 @controller.add_callback("routers", upis.radio.set_channel)
-def ath9k_reponse(group, nodeId, data):
-    print "Received response : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
-    
+def set_channel_reponse(group, nodeId, data):
+    print "set_channel_reponse : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
     controller.nodes(nodeId).delay(3).net.start_iperf_server(port=1234)
 
 
+@controller.add_callback("routers", upis.radio.get_channel)
+def get_channel_reponse(group, nodeId, data):
+    print "get_channel_reponse : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
+
+
+@controller.add_callback("routers", upis.radio.set_power)
+def set_power_reponse(group, nodeId, data):
+    print "set_power_reponse : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
+
+
 @controller.add_callback("routers", upis.net.start_iperf_server)
-def iperf_reponse(group, nodeId, data):
-    print "Received response : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
+def start_iperf_server_reponse(group, nodeId, data):
+    print "start_iperf_server_reponse : Group:{}, NodeId:{}, msg:{}".format(group, nodeId, data)
 
 
-def print_set_channel_response(group, nodeId, data):
-    print "Print set_channel response : Group:{}, NodeId:{}, Result:{}".format(group, nodeId, data) 
+def print_response(group, nodeId, data):
+    print "Print response : Group:{}, NodeId:{}, Result:{}".format(group, nodeId, data) 
 
 
 
@@ -80,21 +88,22 @@ def main(args):
     #control loop
     while True:
         gevent.sleep(10)
+        print "\n"
         print "Connected nodes", nodes
         if nodes:
             #execute non-blocking function immediately
-            #controller.nodes(nodes[0]).radio.set_channel(11)
+            controller.nodes(nodes[0]).net.start_iperf_server(port=1234)
 
             #execute non-blocking function immediately, with specific callback
-            #controller.nodes(nodes[0]).callback(print_set_channel_response).radio.set_channel(11)
+            controller.nodes(nodes[0]).callback(print_response).radio.set_power(12)
 
             #schedule non-blocking function 
             exec_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
             controller.nodes(nodes[0]).exec_time(exec_time).radio.set_channel(4)
 
             #execute blocking function immediately
-            #result = controller.nodes(nodes[0]).blocking(True).radio.set_channel(11)
-            #print result
+            result = controller.nodes(nodes[0]).blocking(True).radio.get_channel()
+            print "Channel is: ", result
 
 
 if __name__ == "__main__":

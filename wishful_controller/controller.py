@@ -19,7 +19,10 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-        
+#TODO: improve hello sending, add scheduler + timeout mechanism for node removal, 
+#and in agent check source_ID if still conntedted to the same controller, in case of reboot
+#agent should reinitiate discovery procedure and connect once again in case of controller reboot (new UUID)
+
 class Controller(Greenlet):
     def __init__(self, dl, ul):
         Greenlet.__init__(self)
@@ -34,6 +37,7 @@ class Controller(Greenlet):
         self.callbacks = {}
         self.newNodeCallback = None
         self.nodeExitCallback = None
+        self.call_id_gen = 0
 
         self._nodes = []
         self.groups = []
@@ -245,8 +249,11 @@ class Controller(Greenlet):
         #TODO: reschedule agent delete function in scheduler, support aspscheduler first
         pass
 
+    def generate_call_id(self):
+        self.call_id_gen = self.call_id_gen + 1
+        return self.call_id_gen
 
-    def send(self, group, upi_type, fname, delay=None, exec_time=None, timeout=None, *args, **kwargs):
+    def send(self, group, upi_type, fname, delay=None, exec_time=None, timeout=None, blocking=False, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
 
         if not group:
@@ -256,10 +263,17 @@ class Controller(Greenlet):
         if not delay:
             delay = self._delay
 
+        callId = None
         if group in self._nodes or group in self.groups:
             cmdDesc = msgs.CmdDesc()
             cmdDesc.type = upi_type
             cmdDesc.func_name = fname
+            callId = str(self.generate_call_id())
+            cmdDesc.call_id = callId
+
+            if blocking:
+                self._asyncResults[callId] = AsyncResult()       
+
             #TODO: support timeout, on controller and agent sides?
 
             if delay:
@@ -275,6 +289,7 @@ class Controller(Greenlet):
             #TODO: send args in third part of message
             msgContainer.append(fname)
             self.dl_socket.send_multipart(msgContainer)
+        return callId
 
 
     def process_msgs(self):
@@ -301,11 +316,19 @@ class Controller(Greenlet):
             else:
                 self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
-                if "blocking" in self._asyncResults:
-                    self._asyncResults["blocking"].set(msg)
+                #get call_id 
+                callId = cmdDesc.call_id
+                if callId in self._asyncResults:
+                    self._asyncResults[callId].set(msg)
                 else:
-                    if cmdDesc.func_name in self.callbacks:
+                    if cmdDesc.call_id in self.callbacks:
+                        self.callbacks[cmdDesc.call_id](group, cmdDesc.caller_id, msg)
+                        del self.callbacks[cmdDesc.call_id]
+                    elif cmdDesc.func_name in self.callbacks:
                         self.callbacks[cmdDesc.func_name](group, cmdDesc.caller_id, msg)
+                    else:
+                        #TODO: else default callback
+                        pass
 
 
     def test_run(self):
