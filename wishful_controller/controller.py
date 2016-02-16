@@ -153,6 +153,18 @@ class Controller(Greenlet):
         new_module = ControllerModule(name, path, args)
         return new_module
 
+    def my_import(self, module_name):
+        pyModule = __import__(module_name)
+        globals()[module_name] = pyModule
+        return pyModule
+
+    def add_upi_module(self, upi, moduleName, className, importAs):
+        self.log.debug("Adding new UPI module: {}:{}:{}".format(moduleName, className, importAs))
+        pyModule = self.my_import(moduleName)
+        moduleContructor = getattr(pyModule, className)
+        newModule = moduleContructor(self)
+        setattr(self, importAs, newModule)
+
     def new_node_callback(self, **options):
         def decorator(callback):
             self.newNodeCallback = callback
@@ -333,8 +345,10 @@ class Controller(Greenlet):
 
     def test_run(self):
         self.log.debug("Controller starts".format())
-        self.process_msgs()
+        
         if 0:
+            self.process_msgs()
+        else:
             try:
                 self.process_msgs()
 

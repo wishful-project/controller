@@ -52,3 +52,32 @@ class ControllerModule(object):
     def send_msg_to_module(self, msgContainer):
         self.log.debug("Module: {} sends msg".format(self.name))
         self.socket.send_multipart(msgContainer)
+
+
+
+
+class bind_function(object):
+    def __init__(self, upiFunc):
+        fname = upiFunc.__name__
+        self.upi_fname = set([fname])
+
+    def __call__(self, f):
+        f._upi_fname = self.upi_fname
+        return f
+
+
+def build_module(module_class):
+    original_methods = module_class.__dict__.copy()
+    for name, method in original_methods.iteritems():
+        if hasattr(method, '_upi_fname'):
+            #create alias
+            for falias in method._upi_fname - set(original_methods):
+                setattr(module_class, falias, method)
+    return module_class
+
+
+class ControllerUpiModule(object):
+    def __init__(self, controller):
+        self.log = logging.getLogger("{module}.{name}".format(
+            module=self.__class__.__module__, name=self.__class__.__name__))
+        self.controller = controller
