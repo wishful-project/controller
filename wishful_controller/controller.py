@@ -345,6 +345,9 @@ class Controller(Greenlet):
             else:
                 self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
+                if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
+                    msg = pickle.loads(msg)
+
                 #get call_id 
                 callId = cmdDesc.call_id
                 if callId in self._asyncResults:
@@ -356,7 +359,7 @@ class Controller(Greenlet):
                     elif cmdDesc.func_name in self.callbacks:
                         self.callbacks[cmdDesc.func_name](group, cmdDesc.caller_id, msg)
                     elif self.default_callback:
-                        self.default_callback(group, cmdDesc.caller_id, msg)
+                        self.default_callback(group, cmdDesc.caller_id, cmdDesc.func_name, msg)
                     else:
                         self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
 
