@@ -310,6 +310,7 @@ class Controller(Greenlet):
             self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
             msgContainer = []
             msgContainer.append(str(group))
+            cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
             msgContainer.append(cmdDesc.SerializeToString())
             
             #Serialize kwargs (they contrain args)
