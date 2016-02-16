@@ -34,6 +34,7 @@ class Controller(Greenlet):
         self.myId = str(self.myUuid)
         self.modules = {}
 
+        self.default_callback = None
         self.callbacks = {}
         self.newNodeCallback = None
         self.nodeExitCallback = None
@@ -65,6 +66,7 @@ class Controller(Greenlet):
         self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
 
+        #function call scope
         self._scope = None
         self._exec_time = None
         self._delay = None
@@ -181,6 +183,13 @@ class Controller(Greenlet):
         def decorator(callback):
             self.log.debug("Register callback for: ", function.__name__)
             self.callbacks[function.__name__] = callback
+            return callback
+        return decorator
+
+    def set_default_callback(self, **options):
+        def decorator(callback):
+            self.log.debug("Setting default callback")
+            self.default_callback = callback
             return callback
         return decorator
 
@@ -338,9 +347,10 @@ class Controller(Greenlet):
                         del self.callbacks[cmdDesc.call_id]
                     elif cmdDesc.func_name in self.callbacks:
                         self.callbacks[cmdDesc.func_name](group, cmdDesc.caller_id, msg)
+                    elif self.default_callback:
+                        self.default_callback(group, cmdDesc.caller_id, msg)
                     else:
-                        #TODO: else default callback
-                        pass
+                        self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
 
 
     def test_run(self):
