@@ -9,6 +9,10 @@ import datetime
 import gevent
 from gevent import Greenlet
 from gevent.event import AsyncResult
+try:
+   import cPickle as pickle
+except:
+   import pickle
 
 from controller_module import *
 import wishful_framework as msgs
@@ -307,8 +311,11 @@ class Controller(Greenlet):
             msgContainer = []
             msgContainer.append(str(group))
             msgContainer.append(cmdDesc.SerializeToString())
-            #TODO: send args in third part of message
-            msgContainer.append(fname)
+            
+            #Serialize kwargs (they contrain args)
+            serialized_kwargs = pickle.dumps(kwargs)
+            msgContainer.append(serialized_kwargs)
+
             self.dl_socket.send_multipart(msgContainer)
         return callId
 
@@ -356,7 +363,7 @@ class Controller(Greenlet):
     def test_run(self):
         self.log.debug("Controller starts".format())
         
-        if 0:
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
             self.process_msgs()
         else:
             try:

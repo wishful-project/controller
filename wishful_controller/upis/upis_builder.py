@@ -91,7 +91,8 @@ def _add_function(fn, *args, **kwargs):
                         delay=self._ctrl._delay,
                         exec_time=self._ctrl._exec_time,
                         timeout=self._ctrl._timeout,
-                        blocking=self._ctrl._blocking)
+                        blocking=self._ctrl._blocking,
+                        args=args, kwargs=kwargs)
 
         #TODO: move all below to controller send()
         if self._ctrl._callback:
