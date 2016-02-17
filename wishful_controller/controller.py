@@ -122,32 +122,38 @@ class Controller(Greenlet):
         self._callback = callback
         return self
 
-    def rule(self, event, filter, match, action, permanence, callback):
+    def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
 
+        assert event
         rule = msgs.RuleDesc()
         fmodule = event[0].__module__.split('.')
         fmodule = fmodule[len(fmodule)-1]
         rule.event.type = fmodule
         rule.event.func_name = event[0].__name__
-        rule.event.repeat_interval =  pickle.dumps(event[1])
+        rule.event.repeat_interval = pickle.dumps(event[1])
 
-        #TODO: filter
-        rule.filter.filter_type = "MOV_AVG"
-        rule.filter.filter_window_type = "TIME"
-        rule.filter.filter_window_size = "10"
+        if filters:
+            #TODO: filters
+            rule.filter.filter_type = "MOV_AVG"
+            rule.filter.filter_window_type = "TIME"
+            rule.filter.filter_window_size = "10"
 
-        rule.match.condition = match[0]
-        rule.match.value = pickle.dumps(match[1])
+        if match:
+            rule.match.condition = match[0]
+            rule.match.value = pickle.dumps(match[1])
 
-        af_module = action[0].__module__.split('.')
-        af_module = af_module[len(af_module)-1]
-        rule.action.type = af_module
-        rule.action.func_name = action[0].__name__
-        rule.action.args = pickle.dumps(action[1])
+        if action:
+            af_module = action[0].__module__.split('.')
+            af_module = af_module[len(af_module)-1]
+            rule.action.type = af_module
+            rule.action.func_name = action[0].__name__
+            rule.action.args = pickle.dumps(action[1])
 
-        rule.permanence = msgs.RuleDesc.TRANSIENT
+        if permanence:
+            rule.permanence = msgs.RuleDesc.TRANSIENT
         
-        rule.callback = callback.__name__
+        if callback:
+            rule.callback = callback.__name__
 
         self.send_rule(rule)
         return self
