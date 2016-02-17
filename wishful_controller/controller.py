@@ -416,14 +416,22 @@ class Controller(Greenlet):
         self.log.debug("Controller starts".format())
         
         if logging.getLogger().isEnabledFor(logging.DEBUG):
-            self.process_msgs()
+            try:
+                self.process_msgs()
+            finally:
+                self.log.debug("Exit all modules' subprocesses")
+                for name, module in self.modules.iteritems():
+                    module.exit()
+                self.ul_socket.setsockopt(zmq.LINGER, 0)
+                self.dl_socket.setsockopt(zmq.LINGER, 0)
+                self.ul_socket.close()
+                self.dl_socket.close()
+                self.context.term()
         else:
             try:
                 self.process_msgs()
-
             except KeyboardInterrupt:
                 self.log.debug("Controller exits")
-
             except:
                  self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
             finally:
