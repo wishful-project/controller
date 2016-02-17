@@ -122,6 +122,28 @@ class Controller(Greenlet):
         self._callback = callback
         return self
 
+    def rule(self, match, action, permanence="TRANSIENT", callback=None):
+        rule = msgs.RuleDesc()
+        fmodule = match[0].__module__.split('.')
+        fmodule = fmodule[len(fmodule)-1]
+        rule.match.type =  fmodule
+        rule.match.func_name =  match[0].__name__
+        rule.match.filter_type = "MOV_AVG"
+        rule.match.filter_window_type = "TIME"
+        rule.match.filter_window_size = "10"
+        rule.match.condition = match[2]
+        rule.match.value = pickle.dumps(match[3])
+        af_module = action[0].__module__.split('.')
+        af_module = af_module[len(af_module)-1]
+        rule.action.type = af_module
+        rule.action.func_name = action[0].__name__
+        rule.action.args = pickle.dumps(action[1])
+        rule.permanence = msgs.RuleDesc.TRANSIENT
+        rule.callback = callback.__name__
+
+        self.send_rule(rule)
+        return self
+
     def read_config_file(self, path=None):
         self.log.debug("Path to module: {}".format(path))
 
@@ -274,6 +296,19 @@ class Controller(Greenlet):
         #TODO: reschedule agent delete function in scheduler, support aspscheduler first
         pass
 
+    def send_rule(self, rule):
+        self.log.debug("Controller sends rule to agent".format())
+        
+        assert self._scope
+        
+        group = self._scope
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.type = msgs.get_msg_type(msgs.RuleDesc)
+        cmdDesc.func_name = msgs.get_msg_type(msgs.RuleDesc)
+        msgContainer = [group, cmdDesc.SerializeToString(), rule.SerializeToString()]
+        self.dl_socket.send_multipart(msgContainer)
+
+
     def generate_call_id(self):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
@@ -319,7 +354,6 @@ class Controller(Greenlet):
 
             self.dl_socket.send_multipart(msgContainer)
         return callId
-
 
     def process_msgs(self):
         socks = dict(self.poller.poll())
