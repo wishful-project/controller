@@ -122,23 +122,31 @@ class Controller(Greenlet):
         self._callback = callback
         return self
 
-    def rule(self, match, action, permanence="TRANSIENT", callback=None):
+    def rule(self, event, filter, match, action, permanence, callback):
+
         rule = msgs.RuleDesc()
-        fmodule = match[0].__module__.split('.')
+        fmodule = event[0].__module__.split('.')
         fmodule = fmodule[len(fmodule)-1]
-        rule.match.type =  fmodule
-        rule.match.func_name =  match[0].__name__
-        rule.match.filter_type = "MOV_AVG"
-        rule.match.filter_window_type = "TIME"
-        rule.match.filter_window_size = "10"
-        rule.match.condition = match[2]
-        rule.match.value = pickle.dumps(match[3])
+        rule.event.type = fmodule
+        rule.event.func_name = event[0].__name__
+        rule.event.repeat_interval =  pickle.dumps(event[1])
+
+        #TODO: filter
+        rule.filter.filter_type = "MOV_AVG"
+        rule.filter.filter_window_type = "TIME"
+        rule.filter.filter_window_size = "10"
+
+        rule.match.condition = match[0]
+        rule.match.value = pickle.dumps(match[1])
+
         af_module = action[0].__module__.split('.')
         af_module = af_module[len(af_module)-1]
         rule.action.type = af_module
         rule.action.func_name = action[0].__name__
         rule.action.args = pickle.dumps(action[1])
+
         rule.permanence = msgs.RuleDesc.TRANSIENT
+        
         rule.callback = callback.__name__
 
         self.send_rule(rule)
