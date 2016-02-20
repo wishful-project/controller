@@ -70,8 +70,9 @@ class Controller(Greenlet):
         self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
 
-        #function call scope
+        #function call context
         self._scope = None
+        self._iface = None
         self._exec_time = None
         self._delay = None
         self._timeout = None
@@ -98,8 +99,20 @@ class Controller(Greenlet):
         while self.running:
             self.process_msgs()
 
+    def group(self, group):
+        self._scope = group
+        return self       
+
+    def node(self, node):
+        self._scope = node
+        return self        
+
     def nodes(self, nodelist):
         self._scope = nodelist
+        return self
+
+    def iface(self, iface):
+        self._iface = iface
         return self
 
     def exec_time(self, exec_time):
@@ -121,6 +134,17 @@ class Controller(Greenlet):
     def callback(self, callback):
         self._callback = callback
         return self
+
+
+    def _clear_call_context(self):
+        self._scope = None
+        self._iface = None
+        self._exec_time = None
+        self._delay = None
+        self._timeout = None
+        self._blocking = False
+        self._callback = None
+
 
     def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
 
@@ -327,34 +351,30 @@ class Controller(Greenlet):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
 
-    def send(self, group, upi_type, fname, delay=None, exec_time=None, timeout=None, blocking=False, *args, **kwargs):
+    def send(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
+        
+        #TODO: add assert, blocking and callback cannot be at the same time
 
-        if not group:
-            group = self._scope
-        if not exec_time:
-            exec_time = self._exec_time
-        if not delay:
-            delay = self._delay
+        group = self._scope 
+        callId = str(self.generate_call_id())
 
-        callId = None
         if group in self._nodes or group in self.groups:
             cmdDesc = msgs.CmdDesc()
             cmdDesc.type = upi_type
             cmdDesc.func_name = fname
-            callId = str(self.generate_call_id())
             cmdDesc.call_id = callId
 
-            if blocking:
+            if self._blocking:
                 self._asyncResults[callId] = AsyncResult()       
 
             #TODO: support timeout, on controller and agent sides?
 
-            if delay:
-                cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
+            if self._delay:
+                cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=self._delay))
 
-            if exec_time:
-                cmdDesc.exec_time = str(exec_time)
+            if self._exec_time:
+                cmdDesc.exec_time = str(self._exec_time)
 
             self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
             msgContainer = []
@@ -367,6 +387,17 @@ class Controller(Greenlet):
             msgContainer.append(serialized_kwargs)
 
             self.dl_socket.send_multipart(msgContainer)
+
+            if self._callback:
+                self.callbacks[callId] = self._callback
+
+            if callId and self._blocking:
+                self._blocking = False
+                response = self._asyncResults[callId].get()
+                del self._asyncResults[callId] 
+                return response
+
+        self._clear_call_context()
         return callId
 
     def process_msgs(self):

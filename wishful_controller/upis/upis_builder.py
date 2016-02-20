@@ -82,35 +82,8 @@ class CtrTest(object):
 @decorator.decorator
 def _add_function(fn, *args, **kwargs):
     def wrapped(self, *args, **kwargs):
-        #TODO: add assert, blocking and callback cannot be at the same time
-
-        #execute function
-        callId = self._ctrl.send(group=self._ctrl._scope,
-                        upi_type=self._msg_type, 
-                        fname=fn.__name__,
-                        delay=self._ctrl._delay,
-                        exec_time=self._ctrl._exec_time,
-                        timeout=self._ctrl._timeout,
-                        blocking=self._ctrl._blocking,
-                        args=args, kwargs=kwargs)
-
-        #TODO: move all below to controller send()
-        if self._ctrl._callback:
-            self._ctrl.callbacks[callId] = self._ctrl._callback
-
-        self._ctrl._scope = None
-        self._ctrl._exec_time = None
-        self._ctrl._delay = None
-        self._ctrl._timeout = None
-        self._ctrl._callback = None
-
-        if callId and self._ctrl._blocking:
-            self._ctrl._blocking = False
-            response = self._ctrl._asyncResults[callId].get()
-            del self._ctrl._asyncResults[callId] 
-            return response
-
-        return wrapped
+        #send function to controller
+        return self._ctrl.send(upi_type=self._msg_type, fname=fn.__name__, args=args, kwargs=kwargs)
     return wrapped(*args, **kwargs)
 
 class UpiBase(object):
