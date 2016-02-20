@@ -66,19 +66,6 @@ def get_method_sig(method):
         arg_index += 1
     return "%s(%s)" % (method.__name__, ", ".join(args))
 
-class CtrTest(object):
-    def __init__(self):
-        self._blocking = False
-        self._asyncResults = None
-        self._scope = "test"
-        self._exec_time = "11:23:23"
-        self._delay = None
-        self._timeout = 5
-        self._callback = False
-
-    def send(self, scope, upi_type, fname, *args, **kwargs):
-        print scope, upi_type, fname, args, kwargs
-
 @decorator.decorator
 def _add_function(fn, *args, **kwargs):
     def wrapped(self, *args, **kwargs):
@@ -158,23 +145,3 @@ class UpiBuilder(object):
                 setattr(UpiMgmt, method, function)
         mgmt = UpiMgmt(self._ctrl)
         return mgmt
-
-
-if __name__ == "__main__":
-    ctrl = CtrTest()
-    builder = UpiBuilder(ctrl)
-    radio = builder.create_radio()
-    #print(inspect.getargspec(radio.set_channel))
-    #print radio.set_channel
-    radio.set_channel(3)
-
-    net = builder.create_net()
-    print(inspect.getargspec(net.start_iperf_client))
-    print net.start_iperf_client
-    print get_method_sig(net.start_iperf_client)
-    net.start_iperf_client(1)
-
-    mgmt = builder.create_mgmt()
-    #print(inspect.getargspec(mgmt.start_local_control_loop))
-    #print mgmt.start_local_control_loop
-    mgmt.start_local_control_loop()
