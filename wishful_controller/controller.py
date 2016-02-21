@@ -365,6 +365,9 @@ class Controller(Greenlet):
             cmdDesc.func_name = fname
             cmdDesc.call_id = callId
 
+            if self._iface:
+                cmdDesc.interface = self._iface
+
             if self._blocking:
                 self._asyncResults[callId] = AsyncResult()       
 
