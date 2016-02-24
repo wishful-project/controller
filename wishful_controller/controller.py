@@ -27,6 +27,44 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 #and in agent check source_ID if still conntedted to the same controller, in case of reboot
 #agent should reinitiate discovery procedure and connect once again in case of controller reboot (new UUID)
 
+class Node(object):
+    def __init__(self,msg):
+        self.id = str(msg.agent_uuid)
+        self.name = msg.name
+        self.info = msg.info
+        self.modules = {}
+        self.functions = {}
+        self.interfaces = {}
+        self.iface_to_modules = {}
+
+        for module in msg.modules:
+            self.modules[module.id] = str(module.name)
+            for func in module.functions:
+                if module.id not in self.functions:
+                    self.functions[module.id] = [str(func.name)]
+                else:
+                    self.functions[module.id].append(str(func.name))
+
+        for iface in msg.interfaces:
+            self.interfaces[iface.id] = str(iface.name)
+            for module in iface.modules:
+                if iface.id in self.iface_to_modules:
+                    self.iface_to_modules[iface.id].append(str(module.id))
+                else:
+                    self.iface_to_modules[iface.id] = [str(module.id)]
+
+    def __str__(self):
+        print "ID:", self.id
+        print "Name:", self.name
+        print "Info:", self.info
+        print "Modules", self.modules
+        print "Functions", self.functions
+        print "Interfaces", self.interfaces
+        print "Iface_Modules", self.iface_to_modules
+        return ""
+            
+
+
 class Controller(Greenlet):
     def __init__(self, dl, ul):
         Greenlet.__init__(self)
@@ -45,6 +83,7 @@ class Controller(Greenlet):
         self.call_id_gen = 0
 
         self._nodes = []
+        self.nodesObj = []
         self.groups = []
         self.msg_type = {} # 'full name': [(group, callback)]
         self.echoMsgInterval = 3
@@ -266,16 +305,19 @@ class Controller(Greenlet):
         agentId = str(msg.agent_uuid)
         agentName = msg.name
         agentInfo = msg.info
-        #TODO: add supported cmd list
+        
+        node = Node(msg)
+        self.nodesObj.append(node)
 
         if agentId in self._nodes:
             self.log.debug("Already known Agent UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
             return
 
         if self.newNodeCallback:
-            self.newNodeCallback(group, agentId, agentName, agentInfo)
+            self.newNodeCallback(node)
 
         self.log.debug("Controller adds new node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
+        #TODO: get rid of _nodes, replace with nodeObj
         self._nodes.append(agentId)
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
 
@@ -303,8 +345,16 @@ class Controller(Greenlet):
         agentId = str(msg.agent_uuid)
         reason = msg.reason
 
+        node = None
+        for node in self.nodesObj:
+            if node.id == agentId:
+                break;
+
+        if not node:
+            return 
+
         if self.nodeExitCallback:
-            self.nodeExitCallback(group, agentId, reason)
+            self.nodeExitCallback(node, reason)
 
         self.log.debug("Controller removes new node with UUID: {}, Reason: {}".format(agentId, reason))
         if agentId in self._nodes:
