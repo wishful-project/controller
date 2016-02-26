@@ -30,6 +30,7 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 class Node(object):
     def __init__(self,msg):
         self.id = str(msg.agent_uuid)
+        self.ip = str(msg.ip)
         self.name = msg.name
         self.info = msg.info
         self.modules = {}
@@ -55,6 +56,7 @@ class Node(object):
 
     def __str__(self):
         print "ID:", self.id
+        print "IP:", self.ip
         print "Name:", self.name
         print "Info:", self.info
         print "Modules", self.modules
