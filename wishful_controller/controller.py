@@ -60,7 +60,7 @@ class Node(object):
         print "Name:", self.name
         print "Info:", self.info
         print "Modules", self.modules
-        print "Functions", self.functions
+        print "Module_Functions", self.functions
         print "Interfaces", self.interfaces
         print "Iface_Modules", self.iface_to_modules
         return ""
