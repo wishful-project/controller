@@ -78,6 +78,62 @@ class Node(object):
         print "Iface_Modules", self.iface_to_modules
         return ""
             
+class TransportChannel(object):
+    def __init__(self, uplink, downlink):
+        self.context = zmq.Context()
+        self.poller = zmq.Poller()
+
+        self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
+        self.ul_socket.bind(uplink)
+
+        self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
+        self.dl_socket.bind(downlink)
+
+        #register UL socket in poller
+        self.poller.register(self.ul_socket, zmq.POLLIN)
+
+        self.recv_callback = None
+
+    def subscribe_to(self, topic):
+        self.ul_socket.setsockopt(zmq.SUBSCRIBE, topic)
+ 
+    def set_recv_callback(self, callback):
+        self.recv_callback = callback
+
+    def send_downlink_msg(self, msgContainer):
+        self.dl_socket.send_multipart(msgContainer)
+
+    def start(self):
+        socks = dict(self.poller.poll())
+        if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
+            try:
+                msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
+            except zmq.ZMQError:
+                raise zmq.ZMQError
+
+            assert len(msgContainer) == 3
+            group = msgContainer[0]
+            cmdDesc = msgs.CmdDesc()
+            cmdDesc.ParseFromString(msgContainer[1])
+            msg = msgContainer[2]
+            if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
+                msg = pickle.loads(msg)
+
+            msgContainer[0] = group
+            msgContainer[1] = cmdDesc
+            msgContainer[2] = msg
+            self.recv_callback(msgContainer)
+
+
+    def stop(self):
+        self.ul_socket.setsockopt(zmq.LINGER, 0)
+        self.dl_socket.setsockopt(zmq.LINGER, 0)
+        self.ul_socket.close()
+        self.dl_socket.close()
+        self.context.term()        
 
 
 class Controller(Greenlet):
@@ -103,20 +159,8 @@ class Controller(Greenlet):
         self.msg_type = {} # 'full name': [(group, callback)]
         self.echoMsgInterval = 3
 
-        self.context = zmq.Context()
-        self.poller = zmq.Poller()
-
-        self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
-        self.ul_socket.bind(ul)
-
-        self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
-        self.dl_socket.bind(dl)
-
-        #register UL socket in poller
-        self.poller.register(self.ul_socket, zmq.POLLIN)
+        self.transport = TransportChannel(ul, dl)
+        self.transport.set_recv_callback(self.process_msgs)
 
         #UPIs
         builder = upis.upis_builder.UpiBuilder(self)
@@ -140,18 +184,14 @@ class Controller(Greenlet):
         self.log.debug("Exit all modules' subprocesses")
         for name, module in self.modules.iteritems():
             module.exit()
-        self.ul_socket.setsockopt(zmq.LINGER, 0)
-        self.dl_socket.setsockopt(zmq.LINGER, 0)
-        self.ul_socket.close()
-        self.dl_socket.close()
-        self.context.term()
+        self.transport.stop()
 
     def _run(self):
         self.log.debug("Controller starts".format())
 
         self.running = True
         while self.running:
-            self.process_msgs()
+            self.transport.start()
 
     def group(self, group):
         self._scope = group
@@ -319,8 +359,7 @@ class Controller(Greenlet):
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
-        cmdDesc = msgs.CmdDesc()
-        cmdDesc.ParseFromString(msgContainer[1])
+        cmdDesc = msgContainer[1]
         msg = msgs.NewNodeMsg()
         msg.ParseFromString(msgContainer[2])
         agentId = str(msg.agent_uuid)
@@ -340,7 +379,7 @@ class Controller(Greenlet):
         self.log.debug("Controller adds new node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
         #TODO: get rid of _nodes, replace with nodeObj
         self._nodes.append(agentId)
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  str(agentId))
+        self.transport.subscribe_to(str(agentId))
 
         group = agentId
         cmdDesc.Clear()
@@ -355,12 +394,11 @@ class Controller(Greenlet):
         msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
-        self.send_downlink_msg(msgContainer)
+        self.transport.send_downlink_msg(msgContainer)
 
     def remove_new_node(self, msgContainer):
         group = msgContainer[0]
-        cmdDesc = msgs.CmdDesc()
-        cmdDesc.ParseFromString(msgContainer[1])
+        cmdDesc = msgContainer[1]
         msg = msgs.NodeExitMsg()
         msg.ParseFromString(msgContainer[2])
         agentId = str(msg.agent_uuid)
@@ -391,13 +429,12 @@ class Controller(Greenlet):
         msg.uuid = str(self.myId)
         msg.timeout = 3 * self.echoMsgInterval
         msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
-        self.send_downlink_msg(msgContainer)
+        self.transport.send_downlink_msg(msgContainer)
 
     def serve_hello_msg(self, msgContainer):
         self.log.debug("Controller received HELLO MESSAGE from agent".format())
         group = msgContainer[0]
-        cmdDesc = msgs.CmdDesc()
-        cmdDesc.ParseFromString(msgContainer[1])
+        cmdDesc = msgContainer[1]
         msg = msgs.HelloMsg()
         msg.ParseFromString(msgContainer[2])
 
@@ -415,15 +452,13 @@ class Controller(Greenlet):
         cmdDesc.type = msgs.get_msg_type(msgs.RuleDesc)
         cmdDesc.func_name = msgs.get_msg_type(msgs.RuleDesc)
         msgContainer = [group, cmdDesc.SerializeToString(), rule.SerializeToString()]
-        self.send_downlink_msg(msgContainer)
+        self.transport.send_downlink_msg(msgContainer)
 
 
     def generate_call_id(self):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
 
-    def send_downlink_msg(self, msgContainer):
-        self.dl_socket.send_multipart(msgContainer)
 
     def send(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
@@ -465,7 +500,7 @@ class Controller(Greenlet):
             serialized_kwargs = pickle.dumps(kwargs)
             msgContainer.append(serialized_kwargs)
 
-            self.send_downlink_msg(msgContainer)
+            self.transport.send_downlink_msg(msgContainer)
 
             if self._callback:
                 self.callbacks[callId] = self._callback
@@ -481,44 +516,31 @@ class Controller(Greenlet):
         return callId
 
 
-    def process_msgs(self):
-        socks = dict(self.poller.poll())
-        if self.ul_socket in socks and socks[self.ul_socket] == zmq.POLLIN:
-            try:
-                msgContainer = self.ul_socket.recv_multipart(zmq.NOBLOCK)
-            except zmq.ZMQError:
-                raise zmq.ZMQError
+    def process_msgs(self, msgContainer):
+        group = msgContainer[0]
+        cmdDesc = msgContainer[1]
+        msg = msgContainer[2]
 
-            assert len(msgContainer) == 3
-            group = msgContainer[0]
-            cmdDesc = msgs.CmdDesc()
-            cmdDesc.ParseFromString(msgContainer[1])
-            msg = msgContainer[2]
+        self.log.debug("Controller received message: {} from agent".format(cmdDesc.type))
+        if cmdDesc.type == msgs.get_msg_type(msgs.NewNodeMsg):
+            self.add_new_node(msgContainer)
+        elif cmdDesc.type == msgs.get_msg_type(msgs.HelloMsg):
+            self.serve_hello_msg(msgContainer)
+        elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
+            self.remove_new_node(msgContainer)
+        else:
+            self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
-            self.log.debug("Controller received message: {} from agent".format(cmdDesc.type))
-            if cmdDesc.type == msgs.get_msg_type(msgs.NewNodeMsg):
-                self.add_new_node(msgContainer)
-            elif cmdDesc.type == msgs.get_msg_type(msgs.HelloMsg):
-                self.serve_hello_msg(msgContainer)
-            elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
-                self.remove_new_node(msgContainer)
+            callId = cmdDesc.call_id
+            if callId in self._asyncResults:
+                self._asyncResults[callId].set(msg)
             else:
-                self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
-
-                if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
-                    msg = pickle.loads(msg)
-
-                #get call_id 
-                callId = cmdDesc.call_id
-                if callId in self._asyncResults:
-                    self._asyncResults[callId].set(msg)
+                if cmdDesc.call_id in self.callbacks:
+                    self.callbacks[cmdDesc.call_id](group, self.get_node_by_id(cmdDesc.caller_id), msg)
+                    del self.callbacks[cmdDesc.call_id]
+                elif cmdDesc.func_name in self.callbacks:
+                    self.callbacks[cmdDesc.func_name](group, self.get_node_by_id(cmdDesc.caller_id), msg)
+                elif self.default_callback:
+                    self.default_callback(group, self.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                 else:
-                    if cmdDesc.call_id in self.callbacks:
-                        self.callbacks[cmdDesc.call_id](group, self.get_node_by_id(cmdDesc.caller_id), msg)
-                        del self.callbacks[cmdDesc.call_id]
-                    elif cmdDesc.func_name in self.callbacks:
-                        self.callbacks[cmdDesc.func_name](group, self.get_node_by_id(cmdDesc.caller_id), msg)
-                    elif self.default_callback:
-                        self.default_callback(group, self.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
-                    else:
-                        self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
+                    self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
