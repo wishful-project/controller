@@ -27,6 +27,19 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 #and in agent check source_ID if still conntedted to the same controller, in case of reboot
 #agent should reinitiate discovery procedure and connect once again in case of controller reboot (new UUID)
 
+class Group(object):
+    def __init__(self, name):
+        self.name = name
+        self.uuid = str(uuid.uuid4())
+        self.nodes = []
+
+    def add_node(self, node):
+        self.nodes.append(node)
+
+    def remove_node(self,node):
+        self.nodes.remove(node)
+
+
 class Node(object):
     def __init__(self,msg):
         self.id = str(msg.agent_uuid)
@@ -231,9 +244,6 @@ class Controller(Greenlet):
 
         return config
 
-    def load_modules(self, config):
-        self.log.debug("Config: {}".format(config))
-        pass
 
     def load_modules(self, config):
         self.log.debug("Config: {}".format(config))
@@ -284,7 +294,7 @@ class Controller(Greenlet):
             return callback
         return decorator
 
-    def add_callback(self, group, function, **options):
+    def add_callback(self, function, **options):
         def decorator(callback):
             self.log.debug("Register callback for: ", function.__name__)
             self.callbacks[function.__name__] = callback
@@ -297,6 +307,15 @@ class Controller(Greenlet):
             self.default_callback = callback
             return callback
         return decorator
+
+
+    def get_node_by_id(self, id):
+        node = None
+        for n in self.nodesObj:
+            if n.id == id:
+                node = n;
+                break
+        return node 
 
     def add_new_node(self, msgContainer):
         group = msgContainer[0]
@@ -491,12 +510,12 @@ class Controller(Greenlet):
                     self._asyncResults[callId].set(msg)
                 else:
                     if cmdDesc.call_id in self.callbacks:
-                        self.callbacks[cmdDesc.call_id](group, cmdDesc.caller_id, msg)
+                        self.callbacks[cmdDesc.call_id](group, self.get_node_by_id(cmdDesc.caller_id), msg)
                         del self.callbacks[cmdDesc.call_id]
                     elif cmdDesc.func_name in self.callbacks:
-                        self.callbacks[cmdDesc.func_name](group, cmdDesc.caller_id, msg)
+                        self.callbacks[cmdDesc.func_name](group, self.get_node_by_id(cmdDesc.caller_id), msg)
                     elif self.default_callback:
-                        self.default_callback(group, cmdDesc.caller_id, cmdDesc.func_name, msg)
+                        self.default_callback(group, self.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                     else:
                         self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
 
