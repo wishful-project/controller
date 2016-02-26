@@ -518,36 +518,3 @@ class Controller(Greenlet):
                         self.default_callback(group, self.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                     else:
                         self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
-
-
-    def test_run(self):
-        self.log.debug("Controller starts".format())
-        
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            try:
-                self.process_msgs()
-            finally:
-                self.log.debug("Exit all modules' subprocesses")
-                for name, module in self.modules.iteritems():
-                    module.exit()
-                self.ul_socket.setsockopt(zmq.LINGER, 0)
-                self.dl_socket.setsockopt(zmq.LINGER, 0)
-                self.ul_socket.close()
-                self.dl_socket.close()
-                self.context.term()
-        else:
-            try:
-                self.process_msgs()
-            except KeyboardInterrupt:
-                self.log.debug("Controller exits")
-            except:
-                 self.log.debug("Unexpected error:".format(sys.exc_info()[0]))
-            finally:
-                self.log.debug("Exit all modules' subprocesses")
-                for name, module in self.modules.iteritems():
-                    module.exit()
-                self.ul_socket.setsockopt(zmq.LINGER, 0)
-                self.dl_socket.setsockopt(zmq.LINGER, 0)
-                self.ul_socket.close()
-                self.dl_socket.close()
-                self.context.term()
