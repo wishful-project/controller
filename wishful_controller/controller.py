@@ -355,7 +355,7 @@ class Controller(Greenlet):
         msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
-        self.dl_socket.send_multipart(msgContainer)
+        self.send_downlink_msg(msgContainer)
 
     def remove_new_node(self, msgContainer):
         group = msgContainer[0]
@@ -391,7 +391,7 @@ class Controller(Greenlet):
         msg.uuid = str(self.myId)
         msg.timeout = 3 * self.echoMsgInterval
         msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
-        self.dl_socket.send_multipart(msgContainer)
+        self.send_downlink_msg(msgContainer)
 
     def serve_hello_msg(self, msgContainer):
         self.log.debug("Controller received HELLO MESSAGE from agent".format())
@@ -415,12 +415,15 @@ class Controller(Greenlet):
         cmdDesc.type = msgs.get_msg_type(msgs.RuleDesc)
         cmdDesc.func_name = msgs.get_msg_type(msgs.RuleDesc)
         msgContainer = [group, cmdDesc.SerializeToString(), rule.SerializeToString()]
-        self.dl_socket.send_multipart(msgContainer)
+        self.send_downlink_msg(msgContainer)
 
 
     def generate_call_id(self):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
+
+    def send_downlink_msg(self, msgContainer):
+        self.dl_socket.send_multipart(msgContainer)
 
     def send(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
@@ -462,7 +465,7 @@ class Controller(Greenlet):
             serialized_kwargs = pickle.dumps(kwargs)
             msgContainer.append(serialized_kwargs)
 
-            self.dl_socket.send_multipart(msgContainer)
+            self.send_downlink_msg(msgContainer)
 
             if self._callback:
                 self.callbacks[callId] = self._callback
@@ -476,6 +479,7 @@ class Controller(Greenlet):
 
         self._clear_call_context()
         return callId
+
 
     def process_msgs(self):
         socks = dict(self.poller.poll())
