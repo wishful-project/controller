@@ -1,7 +1,6 @@
 import logging
 import time
 import sys
-#import zmq
 import zmq.green as zmq
 import uuid
 import yaml
@@ -18,6 +17,7 @@ from controller_module import *
 import wishful_framework as msgs
 import upis
 from transport_channel import TransportChannel
+from node_manager import NodeManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -28,57 +28,6 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 #and in agent check source_ID if still conntedted to the same controller, in case of reboot
 #agent should reinitiate discovery procedure and connect once again in case of controller reboot (new UUID)
 
-class Group(object):
-    def __init__(self, name):
-        self.name = name
-        self.uuid = str(uuid.uuid4())
-        self.nodes = []
-
-    def add_node(self, node):
-        self.nodes.append(node)
-
-    def remove_node(self,node):
-        self.nodes.remove(node)
-
-
-class Node(object):
-    def __init__(self,msg):
-        self.id = str(msg.agent_uuid)
-        self.ip = str(msg.ip)
-        self.name = msg.name
-        self.info = msg.info
-        self.modules = {}
-        self.functions = {}
-        self.interfaces = {}
-        self.iface_to_modules = {}
-
-        for module in msg.modules:
-            self.modules[module.id] = str(module.name)
-            for func in module.functions:
-                if module.id not in self.functions:
-                    self.functions[module.id] = [str(func.name)]
-                else:
-                    self.functions[module.id].append(str(func.name))
-
-        for iface in msg.interfaces:
-            self.interfaces[iface.id] = str(iface.name)
-            for module in iface.modules:
-                if iface.id in self.iface_to_modules:
-                    self.iface_to_modules[iface.id].append(str(module.id))
-                else:
-                    self.iface_to_modules[iface.id] = [str(module.id)]
-
-    def __str__(self):
-        print "ID:", self.id
-        print "IP:", self.ip
-        print "Name:", self.name
-        print "Info:", self.info
-        print "Modules", self.modules
-        print "Module_Functions", self.functions
-        print "Interfaces", self.interfaces
-        print "Iface_Modules", self.iface_to_modules
-        return ""
-
 
 class Controller(Greenlet):
     def __init__(self, dl, ul):
@@ -87,8 +36,7 @@ class Controller(Greenlet):
             module=self.__class__.__module__, name=self.__class__.__name__))
 
         self.config = None
-        self.myUuid = uuid.uuid4()
-        self.myId = str(self.myUuid)
+        self.uuid = str(uuid.uuid4())
         self.modules = {}
 
         self.default_callback = None
@@ -97,11 +45,7 @@ class Controller(Greenlet):
         self.nodeExitCallback = None
         self.call_id_gen = 0
 
-        self._nodes = []
-        self.nodesObj = []
-        self.groups = []
-        self.msg_type = {} # 'full name': [(group, callback)]
-        self.echoMsgInterval = 3
+        self.nodeManager = NodeManager(self)
 
         self.transport = TransportChannel(ul, dl)
         self.transport.set_recv_callback(self.process_msgs)
@@ -184,42 +128,6 @@ class Controller(Greenlet):
         self._callback = None
 
 
-    def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
-
-        assert event
-        rule = msgs.RuleDesc()
-        fmodule = event[0].__module__.split('.')
-        fmodule = fmodule[len(fmodule)-1]
-        rule.event.type = fmodule
-        rule.event.func_name = event[0].__name__
-        rule.event.repeat_interval = pickle.dumps(event[1])
-
-        if filters:
-            #TODO: filters
-            rule.filter.filter_type = "MOV_AVG"
-            rule.filter.filter_window_type = "TIME"
-            rule.filter.filter_window_size = "10"
-
-        if match:
-            rule.match.condition = match[0]
-            rule.match.value = pickle.dumps(match[1])
-
-        if action:
-            af_module = action[0].__module__.split('.')
-            af_module = af_module[len(af_module)-1]
-            rule.action.type = af_module
-            rule.action.func_name = action[0].__name__
-            rule.action.args = pickle.dumps(action[1])
-
-        if permanence:
-            rule.permanence = msgs.RuleDesc.TRANSIENT
-        
-        if callback:
-            rule.callback = callback.__name__
-
-        self.send_rule(rule)
-        return self
-
     def read_config_file(self, path=None):
         self.log.debug("Path to module: {}".format(path))
 
@@ -293,98 +201,42 @@ class Controller(Greenlet):
         return decorator
 
 
-    def get_node_by_id(self, id):
-        node = None
-        for n in self.nodesObj:
-            if n.id == id:
-                node = n;
-                break
-        return node 
 
-    def add_new_node(self, msgContainer):
-        group = msgContainer[0]
-        cmdDesc = msgContainer[1]
-        msg = msgs.NewNodeMsg()
-        msg.ParseFromString(msgContainer[2])
-        agentId = str(msg.agent_uuid)
-        agentName = msg.name
-        agentInfo = msg.info
+    def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
+
+        assert event
+        rule = msgs.RuleDesc()
+        fmodule = event[0].__module__.split('.')
+        fmodule = fmodule[len(fmodule)-1]
+        rule.event.type = fmodule
+        rule.event.func_name = event[0].__name__
+        rule.event.repeat_interval = pickle.dumps(event[1])
+
+        if filters:
+            #TODO: filters
+            rule.filter.filter_type = "MOV_AVG"
+            rule.filter.filter_window_type = "TIME"
+            rule.filter.filter_window_size = "10"
+
+        if match:
+            rule.match.condition = match[0]
+            rule.match.value = pickle.dumps(match[1])
+
+        if action:
+            af_module = action[0].__module__.split('.')
+            af_module = af_module[len(af_module)-1]
+            rule.action.type = af_module
+            rule.action.func_name = action[0].__name__
+            rule.action.args = pickle.dumps(action[1])
+
+        if permanence:
+            rule.permanence = msgs.RuleDesc.TRANSIENT
         
-        node = Node(msg)
-        self.nodesObj.append(node)
+        if callback:
+            rule.callback = callback.__name__
 
-        if agentId in self._nodes:
-            self.log.debug("Already known Agent UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
-            return
-
-        if self.newNodeCallback:
-            self.newNodeCallback(node)
-
-        self.log.debug("Controller adds new node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
-        #TODO: get rid of _nodes, replace with nodeObj
-        self._nodes.append(agentId)
-        self.transport.subscribe_to(str(agentId))
-
-        group = agentId
-        cmdDesc.Clear()
-        cmdDesc.type = msgs.get_msg_type(msgs.NewNodeAck)
-        cmdDesc.func_name = msgs.get_msg_type(msgs.NewNodeAck)
-        msg = msgs.NewNodeAck()
-        msg.status = True
-        msg.controller_uuid = self.myId
-        msg.agent_uuid = agentId
-        msg.topics.append("ALL")
-
-        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
-
-        time.sleep(1) # TODO: why?
-        self.transport.send_downlink_msg(msgContainer)
-
-    def remove_new_node(self, msgContainer):
-        group = msgContainer[0]
-        cmdDesc = msgContainer[1]
-        msg = msgs.NodeExitMsg()
-        msg.ParseFromString(msgContainer[2])
-        agentId = str(msg.agent_uuid)
-        reason = msg.reason
-
-        node = None
-        for node in self.nodesObj:
-            if node.id == agentId:
-                break;
-
-        if not node:
-            return 
-
-        if self.nodeExitCallback:
-            self.nodeExitCallback(node, reason)
-
-        self.log.debug("Controller removes new node with UUID: {}, Reason: {}".format(agentId, reason))
-        if agentId in self._nodes:
-            self._nodes.remove(agentId)
-
-    def send_hello_msg_to_controller(self, nodeId):
-        self.log.debug("Controller sends HelloMsg to agent")
-        group = nodeId
-        cmdDesc = msgs.CmdDesc()
-        cmdDesc.type = msgs.get_msg_type(msgs.HelloMsg)
-        cmdDesc.func_name = msgs.get_msg_type(msgs.HelloMsg)
-        msg = msgs.HelloMsg()
-        msg.uuid = str(self.myId)
-        msg.timeout = 3 * self.echoMsgInterval
-        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
-        self.transport.send_downlink_msg(msgContainer)
-
-    def serve_hello_msg(self, msgContainer):
-        self.log.debug("Controller received HELLO MESSAGE from agent".format())
-        group = msgContainer[0]
-        cmdDesc = msgContainer[1]
-        msg = msgs.HelloMsg()
-        msg.ParseFromString(msgContainer[2])
-
-        self.send_hello_msg_to_controller(str(msg.uuid))
-        #TODO: reschedule agent delete function in scheduler, support aspscheduler first
-        pass
+        self.send_rule(rule)
+        return self
 
     def send_rule(self, rule):
         self.log.debug("Controller sends rule to agent".format())
@@ -412,49 +264,49 @@ class Controller(Greenlet):
         group = self._scope 
         callId = str(self.generate_call_id())
 
-        if group in self._nodes or group in self.groups:
-            cmdDesc = msgs.CmdDesc()
-            cmdDesc.type = upi_type
-            cmdDesc.func_name = fname
-            cmdDesc.call_id = callId
+        #if group in self.nodeManager.nodes:
+        cmdDesc = msgs.CmdDesc()
+        cmdDesc.type = upi_type
+        cmdDesc.func_name = fname
+        cmdDesc.call_id = callId
 
-            if self._iface:
-                cmdDesc.interface = self._iface
-            else:
-                cmdDesc.interface = "ALL"
+        if self._iface:
+            cmdDesc.interface = self._iface
+        else:
+            cmdDesc.interface = "ALL"
 
-            if self._blocking:
-                self._asyncResults[callId] = AsyncResult()       
+        if self._blocking:
+            self._asyncResults[callId] = AsyncResult()       
 
-            #TODO: support timeout, on controller and agent sides?
+        #TODO: support timeout, on controller and agent sides?
 
-            if self._delay:
-                cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=self._delay))
+        if self._delay:
+            cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=self._delay))
 
-            if self._exec_time:
-                cmdDesc.exec_time = str(self._exec_time)
+        if self._exec_time:
+            cmdDesc.exec_time = str(self._exec_time)
 
-            self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
-            msgContainer = []
-            msgContainer.append(str(group))
-            cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
-            msgContainer.append(cmdDesc.SerializeToString())
-            
-            #Serialize kwargs (they contrain args)
-            serialized_kwargs = pickle.dumps(kwargs)
-            msgContainer.append(serialized_kwargs)
+        self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
+        msgContainer = []
+        msgContainer.append(str(group))
+        cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
+        msgContainer.append(cmdDesc.SerializeToString())
+        
+        #Serialize kwargs (they contrain args)
+        serialized_kwargs = pickle.dumps(kwargs)
+        msgContainer.append(serialized_kwargs)
 
-            self.transport.send_downlink_msg(msgContainer)
+        self.transport.send_downlink_msg(msgContainer)
 
-            if self._callback:
-                self.callbacks[callId] = self._callback
+        if self._callback:
+            self.callbacks[callId] = self._callback
 
-            if callId and self._blocking:
-                self._blocking = False
-                response = self._asyncResults[callId].get()
-                del self._asyncResults[callId]
-                self._clear_call_context()
-                return response
+        if callId and self._blocking:
+            self._blocking = False
+            response = self._asyncResults[callId].get()
+            del self._asyncResults[callId]
+            self._clear_call_context()
+            return response
 
         self._clear_call_context()
         return callId
@@ -466,12 +318,20 @@ class Controller(Greenlet):
         msg = msgContainer[2]
 
         self.log.debug("Controller received message: {} from agent".format(cmdDesc.type))
+
         if cmdDesc.type == msgs.get_msg_type(msgs.NewNodeMsg):
-            self.add_new_node(msgContainer)
+            node = self.nodeManager.add_node(msgContainer)
+            if node and self.newNodeCallback:
+                self.newNodeCallback(node)
+
         elif cmdDesc.type == msgs.get_msg_type(msgs.HelloMsg):
-            self.serve_hello_msg(msgContainer)
+            self.nodeManager.serve_hello_msg(msgContainer)
+
         elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
-            self.remove_new_node(msgContainer)
+            [node,reason] = self.nodeManager.remove_node(msgContainer)
+            if node and self.nodeExitCallback:
+                self.nodeExitCallback(node, reason)
+
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
@@ -480,11 +340,11 @@ class Controller(Greenlet):
                 self._asyncResults[callId].set(msg)
             else:
                 if cmdDesc.call_id in self.callbacks:
-                    self.callbacks[cmdDesc.call_id](group, self.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.call_id](group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                     del self.callbacks[cmdDesc.call_id]
                 elif cmdDesc.func_name in self.callbacks:
-                    self.callbacks[cmdDesc.func_name](group, self.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.func_name](group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                 elif self.default_callback:
-                    self.default_callback(group, self.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
+                    self.default_callback(group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                 else:
                     self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))

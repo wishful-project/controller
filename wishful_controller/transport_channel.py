@@ -16,6 +16,9 @@ __email__ = "gawlowicz@tkn.tu-berlin.de"
 
 class TransportChannel(object):
     def __init__(self, uplink, downlink):
+        self.log = logging.getLogger("{module}.{name}".format(
+            module=self.__class__.__module__, name=self.__class__.__name__))
+        
         self.context = zmq.Context()
         self.poller = zmq.Poller()
 
