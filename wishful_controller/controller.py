@@ -15,7 +15,7 @@ except:
 
 from controller_module import *
 import wishful_framework as msgs
-import upis
+import upis_builder
 from transport_channel import TransportChannel
 from node_manager import NodeManager
 
@@ -35,8 +35,8 @@ class Controller(Greenlet):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
-        self.config = None
         self.uuid = str(uuid.uuid4())
+        self.config = None
         self.modules = {}
 
         self.default_callback = None
@@ -51,7 +51,7 @@ class Controller(Greenlet):
         self.transport.set_recv_callback(self.process_msgs)
 
         #UPIs
-        builder = upis.upis_builder.UpiBuilder(self)
+        builder = upis_builder.UpiBuilder(self)
         self.radio = builder.create_radio()
         self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
@@ -256,7 +256,7 @@ class Controller(Greenlet):
         return self.call_id_gen
 
 
-    def send(self, upi_type, fname, *args, **kwargs):
+    def send_cmd(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
         #TODO: add assert, blocking and callback cannot be at the same time
