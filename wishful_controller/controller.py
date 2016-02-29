@@ -48,6 +48,7 @@ class Controller(Greenlet):
         self.nodeManager = NodeManager(self)
 
         self.transport = TransportChannel(ul, dl)
+        self.transport.subscribe_to(self.uuid)
         self.transport.set_recv_callback(self.process_msgs)
 
         #UPIs

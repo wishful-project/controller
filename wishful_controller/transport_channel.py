@@ -25,7 +25,6 @@ class TransportChannel(object):
         self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "RESPONSE")
         self.ul_socket.bind(uplink)
 
         self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
@@ -37,6 +36,7 @@ class TransportChannel(object):
         self.recv_callback = None
 
     def subscribe_to(self, topic):
+        self.log.debug("Controller subscribes to topic: {}".format(topic))
         self.ul_socket.setsockopt(zmq.SUBSCRIBE, topic)
  
     def set_recv_callback(self, callback):

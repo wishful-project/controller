@@ -100,7 +100,7 @@ class NodeManager(object):
         node = Node(msg)
         self.nodes.append(node)
         self.log.debug("New node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
-        self.controller.transport.subscribe_to(str(agentId))
+        self.controller.transport.subscribe_to(agentId)
 
         group = agentId
         cmdDesc.Clear()
