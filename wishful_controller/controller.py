@@ -58,7 +58,7 @@ class Controller(Greenlet):
 
         #function call context
         self._scope = None
-        self._iface = "ALL"
+        self._iface = None
         self._exec_time = None
         self._delay = None
         self._timeout = None
@@ -120,7 +120,7 @@ class Controller(Greenlet):
 
     def _clear_call_context(self):
         self._scope = None
-        self._iface = "ALL"
+        self._iface = None
         self._exec_time = None
         self._delay = None
         self._timeout = None
@@ -272,8 +272,6 @@ class Controller(Greenlet):
 
         if self._iface:
             cmdDesc.interface = self._iface
-        else:
-            cmdDesc.interface = "ALL"
 
         if self._blocking:
             self._asyncResults[callId] = AsyncResult()       
