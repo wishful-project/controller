@@ -17,6 +17,7 @@ import wishful_framework as msgs
 import upis_builder
 from transport_channel import TransportChannel
 from node_manager import NodeManager
+from module_manager import ModuleManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -33,7 +34,6 @@ class Controller(Greenlet):
 
         self.uuid = str(uuid.uuid4())
         self.config = None
-        self.modules = {}
 
         self.default_callback = None
         self.callbacks = {}
@@ -41,6 +41,7 @@ class Controller(Greenlet):
         self.nodeExitCallback = None
         self.call_id_gen = 0
 
+        self.moduleManager = ModuleManager(self)
         self.nodeManager = NodeManager(self)
 
         self.transport = TransportChannel(ul, dl)
@@ -66,13 +67,15 @@ class Controller(Greenlet):
 
     def stop(self):
         self.running = False
-        self.log.debug("Exit all modules' subprocesses")
-        for name, module in self.modules.iteritems():
-            module.exit()
+        self.log.debug("Nofity EXIT to all modules")
+        self.moduleManager.exit()
         self.transport.stop()
 
     def _run(self):
         self.log.debug("Controller starts".format())
+
+        self.log.debug("Nofity START to all modules")
+        self.moduleManager.start()
 
         self.running = True
         while self.running:
@@ -125,42 +128,24 @@ class Controller(Greenlet):
         self._callback = None
 
 
+    def add_module(self, moduleName, pyModuleName, className):
+        self.moduleManager.add_module(moduleName, pyModuleName, className)
+
+
+    def add_upi_module(self, upi, pyModuleName, className, importAs):
+        self.log.debug("Adding new UPI module: {}:{}:{}".format(moduleName, className, importAs))
+        upiModule = self.moduleManager.add_upi_module(upi, pyModuleName, className)
+        setattr(self, importAs, upiModule)
+
+
     def load_config(self, config):
         self.log.debug("Config: {}".format(config))
 
-        for module_name, module_parameters in config.iteritems():
-            self.add_module(
-                self.exec_module(
-                        name=module_name,
-                        path=module_parameters['path'],
-                        args=module_parameters['args']
-                )
-            )
+        #load modules
+        moduleDesc = config['modules']
+        for m_name, m_params in moduleDesc.iteritems():
+            self.add_module(m_name, m_params['module'], m_params['class_name'])
 
-    def add_module(self, module):
-        self.log.debug("Adding new module: {}".format(module))
-        self.modules[module.name] = module
-
-        #register module socket in poller
-        # TODO: specific (named) socket for synchronization and discovery modules or do we need it ?
-        #self.poller.register(module.socket, zmq.POLLIN)
-
-
-    def exec_module(self, name, path, args):
-        new_module = ControllerModule(name, path, args)
-        return new_module
-
-    def my_import(self, module_name):
-        pyModule = __import__(module_name)
-        globals()[module_name] = pyModule
-        return pyModule
-
-    def add_upi_module(self, upi, moduleName, className, importAs):
-        self.log.debug("Adding new UPI module: {}:{}:{}".format(moduleName, className, importAs))
-        pyModule = self.my_import(moduleName)
-        moduleContructor = getattr(pyModule, className)
-        newModule = moduleContructor(self)
-        setattr(self, importAs, newModule)
 
     def new_node_callback(self, **options):
         def decorator(callback):
@@ -168,11 +153,13 @@ class Controller(Greenlet):
             return callback
         return decorator
 
+
     def node_exit_callback(self, **options):
         def decorator(callback):
             self.nodeManager.nodeExitCallback = callback
             return callback
         return decorator
+
 
     def add_callback(self, function, **options):
         def decorator(callback):
@@ -180,6 +167,7 @@ class Controller(Greenlet):
             self.callbacks[function.__name__] = callback
             return callback
         return decorator
+
 
     def set_default_callback(self, **options):
         def decorator(callback):
@@ -189,7 +177,7 @@ class Controller(Greenlet):
         return decorator
 
 
-
+    #TODO: move to new module
     def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
 
         assert event
@@ -226,6 +214,7 @@ class Controller(Greenlet):
         self.send_rule(rule)
         return self
 
+    #TODO: move to new module
     def send_rule(self, rule):
         self.log.debug("Controller sends rule to agent".format())
         
