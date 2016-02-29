@@ -69,7 +69,10 @@ class NodeManager(object):
         self.controller = controller
         self.nodes = []
         self.groups = []
-       
+
+        self.newNodeCallback = None
+        self.nodeExitCallback = None
+
         self.helloMsgInterval = 3
         self.helloTimeout = 3*self.helloMsgInterval
 
@@ -101,6 +104,9 @@ class NodeManager(object):
         self.nodes.append(node)
         self.log.debug("New node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
         self.controller.transport.subscribe_to(agentId)
+
+        if node and self.newNodeCallback:
+            self.newNodeCallback(node)
 
         group = agentId
         cmdDesc.Clear()
@@ -135,6 +141,9 @@ class NodeManager(object):
         self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(agentId, reason))
 
         self.nodes.remove(node)
+
+        if node and self.nodeExitCallback:
+            self.nodeExitCallback(node, reason)
 
         return [node, reason]
 

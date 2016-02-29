@@ -164,13 +164,13 @@ class Controller(Greenlet):
 
     def new_node_callback(self, **options):
         def decorator(callback):
-            self.newNodeCallback = callback
+            self.nodeManager.newNodeCallback = callback
             return callback
         return decorator
 
     def node_exit_callback(self, **options):
         def decorator(callback):
-            self.nodeExitCallback = callback
+            self.nodeManager.nodeExitCallback = callback
             return callback
         return decorator
 
@@ -306,17 +306,13 @@ class Controller(Greenlet):
         self.log.debug("Controller received message: {} from agent".format(cmdDesc.type))
 
         if cmdDesc.type == msgs.get_msg_type(msgs.NewNodeMsg):
-            node = self.nodeManager.add_node(msgContainer)
-            if node and self.newNodeCallback:
-                self.newNodeCallback(node)
+            self.nodeManager.add_node(msgContainer)
 
         elif cmdDesc.type == msgs.get_msg_type(msgs.HelloMsg):
             self.nodeManager.serve_hello_msg(msgContainer)
 
         elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
-            [node,reason] = self.nodeManager.remove_node(msgContainer)
-            if node and self.nodeExitCallback:
-                self.nodeExitCallback(node, reason)
+            self.nodeManager.remove_node(msgContainer)
 
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
