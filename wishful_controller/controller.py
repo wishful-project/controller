@@ -3,7 +3,6 @@ import time
 import sys
 import zmq.green as zmq
 import uuid
-import yaml
 import datetime
 import gevent
 from gevent import Greenlet
@@ -25,9 +24,6 @@ __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 #TODO: improve hello sending, add scheduler + timeout mechanism for node removal, 
-#and in agent check source_ID if still conntedted to the same controller, in case of reboot
-#agent should reinitiate discovery procedure and connect once again in case of controller reboot (new UUID)
-
 
 class Controller(Greenlet):
     def __init__(self, dl, ul):
@@ -129,16 +125,7 @@ class Controller(Greenlet):
         self._callback = None
 
 
-    def read_config_file(self, path=None):
-        self.log.debug("Path to module: {}".format(path))
-
-        with open(path, 'r') as f:
-           config = yaml.load(f)
-
-        return config
-
-
-    def load_modules(self, config):
+    def load_config(self, config):
         self.log.debug("Config: {}".format(config))
 
         for module_name, module_parameters in config.iteritems():
