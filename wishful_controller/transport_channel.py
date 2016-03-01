@@ -54,14 +54,14 @@ class TransportChannel(object):
                 raise zmq.ZMQError
 
             assert len(msgContainer) == 3
-            group = msgContainer[0]
+            dest = msgContainer[0]
             cmdDesc = msgs.CmdDesc()
             cmdDesc.ParseFromString(msgContainer[1])
             msg = msgContainer[2]
             if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
                 msg = pickle.loads(msg)
 
-            msgContainer[0] = group
+            msgContainer[0] = dest
             msgContainer[1] = cmdDesc
             msgContainer[2] = msg
             self.recv_callback(msgContainer)

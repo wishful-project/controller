@@ -86,8 +86,17 @@ class NodeManager(object):
         return node 
 
 
+    def get_node_by_ip(self, ip):
+        node = None
+        for n in self.nodes:
+            if n.ip == ip:
+                node = n;
+                break
+        return node 
+
+
     def add_node(self, msgContainer):
-        group = msgContainer[0]
+        topic = msgContainer[0]
         cmdDesc = msgContainer[1]
         msg = msgs.NewNodeMsg()
         msg.ParseFromString(msgContainer[2])
@@ -108,7 +117,7 @@ class NodeManager(object):
         if node and self.newNodeCallback:
             self.newNodeCallback(node)
 
-        group = agentId
+        dest = agentId
         cmdDesc.Clear()
         cmdDesc.type = msgs.get_msg_type(msgs.NewNodeAck)
         cmdDesc.func_name = msgs.get_msg_type(msgs.NewNodeAck)
@@ -118,7 +127,7 @@ class NodeManager(object):
         msg.agent_uuid = agentId
         msg.topics.append("ALL")
 
-        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc.SerializeToString(), msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
         self.controller.transport.send_downlink_msg(msgContainer)
@@ -126,7 +135,7 @@ class NodeManager(object):
 
 
     def remove_node(self, msgContainer):
-        group = msgContainer[0]
+        topic = msgContainer[0]
         cmdDesc = msgContainer[1]
         msg = msgs.NodeExitMsg()
         msg.ParseFromString(msgContainer[2])
@@ -150,20 +159,20 @@ class NodeManager(object):
 
     def send_hello_msg_to_node(self, nodeId):
         self.log.debug("Controller sends HelloMsg to agent")
-        group = nodeId
+        dest = nodeId
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = msgs.get_msg_type(msgs.HelloMsg)
         cmdDesc.func_name = msgs.get_msg_type(msgs.HelloMsg)
         msg = msgs.HelloMsg()
         msg.uuid = str(self.controller.uuid)
         msg.timeout = self.helloTimeout
-        msgContainer = [group, cmdDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc.SerializeToString(), msg.SerializeToString()]
         self.controller.transport.send_downlink_msg(msgContainer)
 
 
     def serve_hello_msg(self, msgContainer):
         self.log.debug("Controller received HELLO MESSAGE from agent".format())
-        group = msgContainer[0]
+        dest = msgContainer[0]
         cmdDesc = msgContainer[1]
         msg = msgs.HelloMsg()
         msg.ParseFromString(msgContainer[2])

@@ -224,11 +224,11 @@ class Controller(Greenlet):
         
         assert self._scope
         
-        group = self._scope
+        dest = self._scope
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = msgs.get_msg_type(msgs.RuleDesc)
         cmdDesc.func_name = msgs.get_msg_type(msgs.RuleDesc)
-        msgContainer = [group, cmdDesc.SerializeToString(), rule.SerializeToString()]
+        msgContainer = [dest, cmdDesc.SerializeToString(), rule.SerializeToString()]
         self.transport.send_downlink_msg(msgContainer)
 
 
@@ -242,10 +242,10 @@ class Controller(Greenlet):
         
         #TODO: add assert, blocking and callback cannot be at the same time
 
-        group = self._scope 
+        dest = self._scope 
         callId = str(self.generate_call_id())
 
-        #if group in self.nodeManager.nodes:
+        #if dest in self.nodeManager.nodes:
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = upi_type
         cmdDesc.func_name = fname
@@ -265,9 +265,9 @@ class Controller(Greenlet):
         if self._exec_time:
             cmdDesc.exec_time = str(self._exec_time)
 
-        self.log.debug("Controller sends message: {}:{}:{}".format(group, cmdDesc.type, cmdDesc.func_name))
+        self.log.debug("Controller sends message: {}:{}:{}".format(dest, cmdDesc.type, cmdDesc.func_name))
         msgContainer = []
-        msgContainer.append(str(group))
+        msgContainer.append(str(dest))
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         msgContainer.append(cmdDesc.SerializeToString())
         
@@ -292,7 +292,7 @@ class Controller(Greenlet):
 
 
     def process_msgs(self, msgContainer):
-        group = msgContainer[0]
+        dest = msgContainer[0]
         cmdDesc = msgContainer[1]
         msg = msgContainer[2]
 
@@ -315,11 +315,11 @@ class Controller(Greenlet):
                 self._asyncResults[callId].set(msg)
             else:
                 if cmdDesc.call_id in self.callbacks:
-                    self.callbacks[cmdDesc.call_id](group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.call_id](dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                     del self.callbacks[cmdDesc.call_id]
                 elif cmdDesc.func_name in self.callbacks:
-                    self.callbacks[cmdDesc.func_name](group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.func_name](dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                 elif self.default_callback:
-                    self.default_callback(group, self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
+                    self.default_callback(dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                 else:
                     self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
