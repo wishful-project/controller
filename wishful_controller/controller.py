@@ -70,6 +70,7 @@ class Controller(Greenlet):
         self.log.debug("Nofity EXIT to all modules")
         self.moduleManager.exit()
         self.transport.stop()
+        self.kill()
 
     def _run(self):
         self.log.debug("Controller starts".format())
