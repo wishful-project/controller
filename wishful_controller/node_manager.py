@@ -92,7 +92,17 @@ class NodeManager(object):
             if n.ip == ip:
                 node = n;
                 break
-        return node 
+        return node
+
+
+    def get_node_by_str(self, string):
+        node = None
+        node = self.get_node_by_ip(string)
+        if node:
+            return node
+
+        node = self.get_node_by_id(string)
+        return node
 
 
     def add_node(self, msgContainer):

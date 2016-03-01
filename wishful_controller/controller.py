@@ -16,7 +16,7 @@ from controller_module import *
 import wishful_framework as msgs
 import upis_builder
 from transport_channel import TransportChannel
-from node_manager import NodeManager
+from node_manager import NodeManager, Node
 from module_manager import ModuleManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
@@ -241,11 +241,17 @@ class Controller(Greenlet):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
         #TODO: add assert, blocking and callback cannot be at the same time
+        destNode = self._scope
 
-        dest = self._scope 
+        #translate to node if needed
+        if not isinstance(destNode, Node):
+            destNode = self.nodeManager.get_node_by_str(destNode)
+
         callId = str(self.generate_call_id())
 
-        #if dest in self.nodeManager.nodes:
+        #TODO: check if function is supported by agent, if not raise exception
+        #TODO: check if destNode not empty
+        
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = upi_type
         cmdDesc.func_name = fname
@@ -265,9 +271,9 @@ class Controller(Greenlet):
         if self._exec_time:
             cmdDesc.exec_time = str(self._exec_time)
 
-        self.log.debug("Controller sends message: {}:{}:{}".format(dest, cmdDesc.type, cmdDesc.func_name))
+        self.log.debug("Controller sends message: {}:{}:{}".format(destNode.id, cmdDesc.type, cmdDesc.func_name))
         msgContainer = []
-        msgContainer.append(str(dest))
+        msgContainer.append(str(destNode.id))
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         msgContainer.append(cmdDesc.SerializeToString())
         
