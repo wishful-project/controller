@@ -128,8 +128,8 @@ class Controller(Greenlet):
         self._callback = None
 
 
-    def add_module(self, moduleName, pyModuleName, className):
-        self.moduleManager.add_module(moduleName, pyModuleName, className)
+    def add_module(self, moduleName, pyModuleName, className, kwargs):
+        self.moduleManager.add_module(moduleName, pyModuleName, className, kwargs)
 
 
     def add_upi_module(self, upi, pyModuleName, className, importAs):
@@ -144,7 +144,11 @@ class Controller(Greenlet):
         #load modules
         moduleDesc = config['modules']
         for m_name, m_params in moduleDesc.iteritems():
-            self.add_module(m_name, m_params['module'], m_params['class_name'])
+            kwargs = {}
+            if 'kwargs' in m_params:
+                kwargs = m_params['kwargs']
+
+            self.add_module(m_name, m_params['module'], m_params['class_name'],kwargs)
 
 
     def new_node_callback(self, **options):

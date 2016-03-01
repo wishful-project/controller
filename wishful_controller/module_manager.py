@@ -74,13 +74,13 @@ class ModuleManager(object):
         return None
 
 
-    def add_module(self, moduleName, pyModuleName, className):
+    def add_module(self, moduleName, pyModuleName, className, kwargs):
         self.log.debug("Add new module: {}:{}:{}".format(moduleName, pyModuleName, className))
 
         moduleId = self.generate_new_module_id()
 
         pyModule = self.my_import(pyModuleName)
-        wishful_module = getattr(pyModule, className)()
+        wishful_module = getattr(pyModule, className)(**kwargs)
         wishful_module.id = moduleId
 
         self.modules[moduleId] = wishful_module
