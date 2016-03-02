@@ -54,7 +54,11 @@ class AsyncResultCollector(object):
     def get(self):
         #TODO: add timeout 
         self.asyncResult.get()
-        return self.results
+        if len(self.results.values()) > 1:
+            return self.results
+        else:
+            key, value = self.results.popitem()
+            return value
 
     def set(self, node, msg):
         self.results[node] = msg
