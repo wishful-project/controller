@@ -2,6 +2,7 @@ import logging
 import time
 import sys
 import zmq.green as zmq
+from gevent.lock import Semaphore
 import wishful_framework as msgs
 try:
    import cPickle as pickle
@@ -27,6 +28,7 @@ class TransportChannel(object):
         self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
         self.ul_socket.bind(uplink)
 
+        self.downlinkSocketLock = Semaphore(value=1)
         self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
         self.dl_socket.bind(downlink)
 
@@ -43,7 +45,13 @@ class TransportChannel(object):
         self.recv_callback = callback
 
     def send_downlink_msg(self, msgContainer):
-        self.dl_socket.send_multipart(msgContainer)
+        #TODO: it is quick fix; find better solution with socket per thread
+        self.downlinkSocketLock.acquire()
+        try:
+            self.dl_socket.send_multipart(msgContainer)
+        finally:
+            self.downlinkSocketLock.release()
+
 
     def start(self):
         socks = dict(self.poller.poll())
