@@ -26,6 +26,23 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 #TODO: improve hello sending, add scheduler + timeout mechanism for node removal, 
 
+class CallIdCallback(object):
+    def __init__(self, cb, callNum):
+        self.cb = cb
+        self.callNum = callNum
+        self.callbackFireNum = 0
+        self.readyToRemove = False
+
+    def get_callback(self):
+        self.callbackFireNum = self.callbackFireNum + 1
+        if self.callbackFireNum == self.callNum:
+            self.readyToRemove = True
+        return self.cb
+
+    def ready_to_remove(self):
+        return self.readyToRemove
+
+
 class Controller(Greenlet):
     def __init__(self, dl, ul):
         Greenlet.__init__(self)
@@ -247,9 +264,10 @@ class Controller(Greenlet):
         #TODO: check if destNode not empty
 
         #set destination
-        msgContainer.insert(0, destNode.id)
+        myMsgContainter = [destNode.id]
+        myMsgContainter.extend(msgContainer)
         self.log.debug("Controller sends cmd message to node: {}".format(destNode.id))
-        self.transport.send_downlink_msg(msgContainer)
+        self.transport.send_downlink_msg(myMsgContainter)
 
 
     def send_cmd(self, upi_type, fname, *args, **kwargs):
@@ -257,7 +275,8 @@ class Controller(Greenlet):
         
         #TODO: support timeout, on controller and agent sides?
         
-        destNode = self._scope
+        scope = self._scope
+        nodeNum = None
         callId = str(self.generate_call_id())
 
         #build cmd desc message
@@ -280,11 +299,22 @@ class Controller(Greenlet):
         serialized_kwargs = pickle.dumps(kwargs)
         msgContainer = [cmdDesc.SerializeToString(), serialized_kwargs]
         
-        self.send_cmd_to_node(destNode, callId, msgContainer)
+        #TODO: currently sending cmd msg to each node separately;
+        #it would be more efficient to exploit PUB/SUB zmq mechanism
+        #create group with uuid and tell nodes to subscribe to this uuid
+        #then send msg to group
+        if hasattr(scope, '__iter__'):
+            nodeNum = len(scope)
+            for node in scope:
+                self.send_cmd_to_node(node, callId, msgContainer)
+        else:
+            nodeNum = 1
+            node = scope
+            self.send_cmd_to_node(node, callId, msgContainer)
 
         #set callback for this function call 
         if self._callback:
-            self.callbacks[callId] = self._callback
+            self.callbacks[callId] = CallIdCallback(self._callback, nodeNum)
 
         #if blocking call, wait for response
         if self._blocking:
@@ -322,8 +352,12 @@ class Controller(Greenlet):
                 self._asyncResults[callId].set(msg)
             else:
                 if cmdDesc.call_id in self.callbacks:
-                    self.callbacks[cmdDesc.call_id]("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
-                    del self.callbacks[cmdDesc.call_id]
+                    callbackObj = self.callbacks[cmdDesc.call_id]
+                    callback = callbackObj.get_callback()
+                    callback("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    if callbackObj.ready_to_remove():
+                        del self.callbacks[cmdDesc.call_id]
+
                 elif cmdDesc.func_name in self.callbacks:
                     self.callbacks[cmdDesc.func_name]("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                 elif self.default_callback:
