@@ -322,11 +322,11 @@ class Controller(Greenlet):
                 self._asyncResults[callId].set(msg)
             else:
                 if cmdDesc.call_id in self.callbacks:
-                    self.callbacks[cmdDesc.call_id](dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.call_id]("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                     del self.callbacks[cmdDesc.call_id]
                 elif cmdDesc.func_name in self.callbacks:
-                    self.callbacks[cmdDesc.func_name](dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    self.callbacks[cmdDesc.func_name]("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                 elif self.default_callback:
-                    self.default_callback(dest, self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
+                    self.default_callback("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
                 else:
                     self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))

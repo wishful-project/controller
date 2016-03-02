@@ -26,8 +26,8 @@ class Node(object):
     def __init__(self,msg):
         self.id = str(msg.agent_uuid)
         self.ip = str(msg.ip)
-        self.name = msg.name
-        self.info = msg.info
+        self.name = str(msg.name)
+        self.info = str(msg.info)
         self.modules = {}
         self.functions = {}
         self.interfaces = {}
