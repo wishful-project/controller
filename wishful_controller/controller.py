@@ -26,6 +26,7 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 #TODO: improve hello sending, add scheduler + timeout mechanism for node removal, 
 
+
 class CallIdCallback(object):
     def __init__(self, cb, callNum):
         self.cb = cb
@@ -41,6 +42,26 @@ class CallIdCallback(object):
 
     def ready_to_remove(self):
         return self.readyToRemove
+
+
+class AsyncResultCollector(object):
+    def __init__(self, callNum):
+        self.callNum = callNum
+        self.results = {}
+        self.ready = False
+        self.asyncResult = AsyncResult()
+
+    def get(self):
+        #TODO: add timeout 
+        self.asyncResult.get()
+        return self.results
+
+    def set(self, node, msg):
+        self.results[node] = msg
+
+        if len(self.results.values()) == self.callNum:
+            self.ready = True
+            self.asyncResult.set()
 
 
 class Controller(Greenlet):
@@ -318,7 +339,7 @@ class Controller(Greenlet):
 
         #if blocking call, wait for response
         if self._blocking:
-            self._asyncResults[callId] = AsyncResult()       
+            self._asyncResults[callId] = AsyncResultCollector(nodeNum)
             response = self._asyncResults[callId].get()
             del self._asyncResults[callId]
             self._clear_call_context()
@@ -349,7 +370,7 @@ class Controller(Greenlet):
 
             callId = cmdDesc.call_id
             if callId in self._asyncResults:
-                self._asyncResults[callId].set(msg)
+                self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
             else:
                 if cmdDesc.call_id in self.callbacks:
                     callbackObj = self.callbacks[cmdDesc.call_id]
