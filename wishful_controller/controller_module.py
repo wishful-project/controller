@@ -3,7 +3,6 @@ import zmq
 import random
 import sys
 import time
-import threading
 try:
    import cPickle as pickle
 except:
