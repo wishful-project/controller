@@ -238,24 +238,28 @@ class Controller(Greenlet):
         return self.call_id_gen
 
 
-    def send_cmd_to_node(self, nodeId, callId, msgContainer):
-        pass
+    def send_cmd_to_node(self, destNode, callId, msgContainer):
+        #translate to node if needed
+        if not isinstance(destNode, Node):
+            destNode = self.nodeManager.get_node_by_str(destNode)
+
+        #TODO: check if function is supported by agent, if not raise exception
+        #TODO: check if destNode not empty
+
+        #set destination
+        msgContainer.insert(0, destNode.id)
+        self.log.debug("Controller sends cmd message to node: {}".format(destNode.id))
+        self.transport.send_downlink_msg(msgContainer)
 
 
     def send_cmd(self, upi_type, fname, *args, **kwargs):
-        self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
+        self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
-        #TODO: check if function is supported by agent, if not raise exception
-        #TODO: check if destNode not empty
         #TODO: support timeout, on controller and agent sides?
         
         destNode = self._scope
         callId = str(self.generate_call_id())
 
-        #translate to node if needed
-        if not isinstance(destNode, Node):
-            destNode = self.nodeManager.get_node_by_str(destNode)
-        
         #build cmd desc message
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = upi_type
@@ -271,17 +275,12 @@ class Controller(Greenlet):
         if self._exec_time:
             cmdDesc.exec_time = str(self._exec_time)
 
-        self.log.debug("Controller sends message: {}:{}:{}".format(destNode.id, cmdDesc.type, cmdDesc.func_name))
-        msgContainer = []
-        msgContainer.append(str(destNode.id))
-        cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
-        msgContainer.append(cmdDesc.SerializeToString())
-        
         #Serialize kwargs (they contrain args)
+        cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         serialized_kwargs = pickle.dumps(kwargs)
-        msgContainer.append(serialized_kwargs)
-
-        self.transport.send_downlink_msg(msgContainer)
+        msgContainer = [cmdDesc.SerializeToString(), serialized_kwargs]
+        
+        self.send_cmd_to_node(destNode, callId, msgContainer)
 
         #set callback for this function call 
         if self._callback:
