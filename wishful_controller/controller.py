@@ -238,21 +238,25 @@ class Controller(Greenlet):
         return self.call_id_gen
 
 
+    def send_cmd_to_node(self, nodeId, callId, msgContainer):
+        pass
+
+
     def send_cmd(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller calls {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
-        #TODO: add assert, blocking and callback cannot be at the same time
+        #TODO: check if function is supported by agent, if not raise exception
+        #TODO: check if destNode not empty
+        #TODO: support timeout, on controller and agent sides?
+        
         destNode = self._scope
+        callId = str(self.generate_call_id())
 
         #translate to node if needed
         if not isinstance(destNode, Node):
             destNode = self.nodeManager.get_node_by_str(destNode)
-
-        callId = str(self.generate_call_id())
-
-        #TODO: check if function is supported by agent, if not raise exception
-        #TODO: check if destNode not empty
         
+        #build cmd desc message
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = upi_type
         cmdDesc.func_name = fname
@@ -260,11 +264,6 @@ class Controller(Greenlet):
 
         if self._iface:
             cmdDesc.interface = self._iface
-
-        if self._blocking:
-            self._asyncResults[callId] = AsyncResult()       
-
-        #TODO: support timeout, on controller and agent sides?
 
         if self._delay:
             cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=self._delay))
@@ -284,11 +283,13 @@ class Controller(Greenlet):
 
         self.transport.send_downlink_msg(msgContainer)
 
+        #set callback for this function call 
         if self._callback:
             self.callbacks[callId] = self._callback
 
-        if callId and self._blocking:
-            self._blocking = False
+        #if blocking call, wait for response
+        if self._blocking:
+            self._asyncResults[callId] = AsyncResult()       
             response = self._asyncResults[callId].get()
             del self._asyncResults[callId]
             self._clear_call_context()
