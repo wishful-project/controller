@@ -53,7 +53,10 @@ class TransportChannel(object):
             except zmq.ZMQError:
                 raise zmq.ZMQError
 
+            if len(msgContainer) is not 3:
+                print msgContainer
             assert len(msgContainer) == 3
+
             dest = msgContainer[0]
             cmdDesc = msgs.CmdDesc()
             cmdDesc.ParseFromString(msgContainer[1])
