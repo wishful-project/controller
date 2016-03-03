@@ -179,7 +179,7 @@ class Controller(Greenlet):
 
 
     def add_upi_module(self, upi, pyModuleName, className, importAs):
-        self.log.debug("Adding new UPI module: {}:{}:{}".format(moduleName, className, importAs))
+        self.log.debug("Adding new UPI module: {}:{}:{}".format(pyModuleName, className, importAs))
         upiModule = self.moduleManager.add_upi_module(upi, pyModuleName, className)
         setattr(self, importAs, upiModule)
 
