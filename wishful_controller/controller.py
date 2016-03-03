@@ -7,10 +7,6 @@ import datetime
 import gevent
 from gevent import Greenlet
 from gevent.event import AsyncResult
-try:
-   import cPickle as pickle
-except:
-   import pickle
 
 from controller_module import *
 import wishful_framework as msgs
@@ -231,57 +227,6 @@ class Controller(Greenlet):
         return decorator
 
 
-    #TODO: move to new module
-    def rule(self, event, filters=None, match=None, action=None, permanence=None, callback=None):
-
-        assert event
-        rule = msgs.RuleDesc()
-        fmodule = event[0].__module__.split('.')
-        fmodule = fmodule[len(fmodule)-1]
-        rule.event.type = fmodule
-        rule.event.func_name = event[0].__name__
-        rule.event.repeat_interval = pickle.dumps(event[1])
-
-        if filters:
-            #TODO: filters
-            rule.filter.filter_type = "MOV_AVG"
-            rule.filter.filter_window_type = "TIME"
-            rule.filter.filter_window_size = "10"
-
-        if match:
-            rule.match.condition = match[0]
-            rule.match.value = pickle.dumps(match[1])
-
-        if action:
-            af_module = action[0].__module__.split('.')
-            af_module = af_module[len(af_module)-1]
-            rule.action.type = af_module
-            rule.action.func_name = action[0].__name__
-            rule.action.args = pickle.dumps(action[1])
-
-        if permanence:
-            rule.permanence = msgs.RuleDesc.TRANSIENT
-        
-        if callback:
-            rule.callback = callback.__name__
-
-        self.send_rule(rule)
-        return self
-
-    #TODO: move to new module
-    def send_rule(self, rule):
-        self.log.debug("Controller sends rule to agent".format())
-        
-        assert self._scope
-        
-        dest = self._scope
-        cmdDesc = msgs.CmdDesc()
-        cmdDesc.type = msgs.get_msg_type(msgs.RuleDesc)
-        cmdDesc.func_name = msgs.get_msg_type(msgs.RuleDesc)
-        msgContainer = [dest, cmdDesc.SerializeToString(), rule.SerializeToString()]
-        self.transport.send_downlink_msg(msgContainer)
-
-
     def generate_call_id(self):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
@@ -355,8 +300,7 @@ class Controller(Greenlet):
 
         #Serialize kwargs (they contrain args)
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
-        serialized_kwargs = pickle.dumps(kwargs)
-        msgContainer = [cmdDesc.SerializeToString(), serialized_kwargs]
+        msgContainer = [cmdDesc, kwargs]
         
 
         #TODO: currently sending cmd msg to each node separately;
@@ -399,6 +343,7 @@ class Controller(Greenlet):
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
+            #TODO: execute callback in new thread, in case there is loop inside
             callId = cmdDesc.call_id
             if callId in self._asyncResults:
                 self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)

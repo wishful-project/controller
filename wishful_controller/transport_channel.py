@@ -45,6 +45,16 @@ class TransportChannel(object):
         self.recv_callback = callback
 
     def send_downlink_msg(self, msgContainer):
+        dest = msgContainer[0]
+        cmdDesc = msgContainer[1]
+        msg = msgContainer[2]
+
+        if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
+            msg = pickle.dumps(msg)
+
+        msgContainer[1] = cmdDesc.SerializeToString()
+        msgContainer[2] = msg
+
         #TODO: it is quick fix; find better solution with socket per thread
         self.downlinkSocketLock.acquire()
         try:

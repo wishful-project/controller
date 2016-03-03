@@ -137,7 +137,7 @@ class NodeManager(object):
         msg.agent_uuid = agentId
         msg.topics.append("ALL")
 
-        msgContainer = [dest, cmdDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc, msg.SerializeToString()]
 
         time.sleep(1) # TODO: why?
         self.controller.transport.send_downlink_msg(msgContainer)
@@ -176,7 +176,7 @@ class NodeManager(object):
         msg = msgs.HelloMsg()
         msg.uuid = str(self.controller.uuid)
         msg.timeout = self.helloTimeout
-        msgContainer = [dest, cmdDesc.SerializeToString(), msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc, msg.SerializeToString()]
         self.controller.transport.send_downlink_msg(msgContainer)
 
 
