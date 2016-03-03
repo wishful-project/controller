@@ -131,13 +131,15 @@ class NodeManager(object):
         cmdDesc.Clear()
         cmdDesc.type = msgs.get_msg_type(msgs.NewNodeAck)
         cmdDesc.func_name = msgs.get_msg_type(msgs.NewNodeAck)
+        cmdDesc.serialization_type = msgs.CmdDesc.PROTOBUF
+
         msg = msgs.NewNodeAck()
         msg.status = True
         msg.controller_uuid = self.controller.uuid
         msg.agent_uuid = agentId
         msg.topics.append("ALL")
 
-        msgContainer = [dest, cmdDesc, msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc, msg]
 
         time.sleep(1) # TODO: why?
         self.controller.transport.send_downlink_msg(msgContainer)
@@ -173,10 +175,12 @@ class NodeManager(object):
         cmdDesc = msgs.CmdDesc()
         cmdDesc.type = msgs.get_msg_type(msgs.HelloMsg)
         cmdDesc.func_name = msgs.get_msg_type(msgs.HelloMsg)
+        cmdDesc.serialization_type = msgs.CmdDesc.PROTOBUF
+
         msg = msgs.HelloMsg()
         msg.uuid = str(self.controller.uuid)
         msg.timeout = self.helloTimeout
-        msgContainer = [dest, cmdDesc, msg.SerializeToString()]
+        msgContainer = [dest, cmdDesc, msg]
         self.controller.transport.send_downlink_msg(msgContainer)
 
 
