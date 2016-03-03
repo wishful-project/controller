@@ -51,14 +51,21 @@ class AsyncResultCollector(object):
         self.ready = False
         self.asyncResult = AsyncResult()
 
-    def get(self):
-        #TODO: add timeout 
-        self.asyncResult.get()
+    def return_response(self):
         if len(self.results.values()) > 1:
             return self.results
         else:
             key, value = self.results.popitem()
-            return value
+            return value       
+
+    def get(self):
+        if len(self.results.values()) == self.callNum:
+            return self.return_response()
+
+        #TODO: add timeout
+        self.asyncResult.get()
+        return self.return_response()
+
 
     def set(self, node, msg):
         self.results[node] = msg
@@ -299,8 +306,19 @@ class Controller(Greenlet):
         self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
         #TODO: support timeout, on controller and agent sides?
-        
+
+        #get function call context
+        #TODO: setting and getting function call context is not thread-safe, improve it
         scope = self._scope
+        iface = self._iface
+        exec_time = self._exec_time
+        delay = self._delay
+        timeout = self._timeout
+        blocking = self._blocking
+        callback = self._callback
+
+        self._clear_call_context()
+
         nodeNum = None
         callId = str(self.generate_call_id())
 
@@ -310,46 +328,55 @@ class Controller(Greenlet):
         cmdDesc.func_name = fname
         cmdDesc.call_id = callId
 
-        if self._iface:
-            cmdDesc.interface = self._iface
+        if iface:
+            cmdDesc.interface = iface
 
-        if self._delay:
-            cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=self._delay))
+        if delay:
+            cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
 
-        if self._exec_time:
-            cmdDesc.exec_time = str(self._exec_time)
+        if exec_time:
+            cmdDesc.exec_time = str(exec_time)
+
+
+        #count nodes if list passed
+        if hasattr(scope, '__iter__'):
+            nodeNum = len(scope)
+        else:
+            nodeNum = 1
+
+        #set callback for this function call 
+        if callback:
+            self.callbacks[callId] = CallIdCallback(callback, nodeNum)
+
+        #if blocking call, wait for response
+        if blocking:
+            asyncResultCollector = AsyncResultCollector(nodeNum)
+            self._asyncResults[callId] = asyncResultCollector
 
         #Serialize kwargs (they contrain args)
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         serialized_kwargs = pickle.dumps(kwargs)
         msgContainer = [cmdDesc.SerializeToString(), serialized_kwargs]
         
+
         #TODO: currently sending cmd msg to each node separately;
         #it would be more efficient to exploit PUB/SUB zmq mechanism
         #create group with uuid and tell nodes to subscribe to this uuid
         #then send msg to group
         if hasattr(scope, '__iter__'):
-            nodeNum = len(scope)
             for node in scope:
                 self.send_cmd_to_node(node, callId, msgContainer)
         else:
-            nodeNum = 1
             node = scope
             self.send_cmd_to_node(node, callId, msgContainer)
 
-        #set callback for this function call 
-        if self._callback:
-            self.callbacks[callId] = CallIdCallback(self._callback, nodeNum)
 
         #if blocking call, wait for response
-        if self._blocking:
-            self._asyncResults[callId] = AsyncResultCollector(nodeNum)
-            response = self._asyncResults[callId].get()
+        if blocking:
+            response = asyncResultCollector.get()
             del self._asyncResults[callId]
-            self._clear_call_context()
             return response
 
-        self._clear_call_context()
         return callId
 
 
