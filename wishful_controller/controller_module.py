@@ -3,11 +3,6 @@ import zmq
 import random
 import sys
 import time
-try:
-   import cPickle as pickle
-except:
-   import pickle
-
 from wishful_framework.modules import *
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
