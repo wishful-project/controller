@@ -78,6 +78,10 @@ class UpiBase(object):
         self._ctrl = None
         self._msg_type = None
 
+    def iface(self, iface):
+        self._ctrl._iface = iface
+        return self
+
 class UpiRadio(UpiBase):
     def __init__(self, ctrl):
         self._ctrl = ctrl
