@@ -12,8 +12,9 @@ __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
 
 class ControllerModule(WishfulModule):
-    def __init__(self):
+    def __init__(self, controller):
         super(ControllerModule, self).__init__()
+        self.controller = controller
 
 
     def send_to_module(self, msgContainer):

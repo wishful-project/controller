@@ -10,11 +10,11 @@ __version__ = "0.1.0"
 __email__ = "gawlowicz@tkn.tu-berlin.de"
 
 class ModuleManager(object):
-    def __init__(self, agent):
+    def __init__(self, controller):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
-        self.agent = agent
+        self.controller = controller
         self.moduleIdGen = 0
         self.ifaceIdGen = 0
         
@@ -92,5 +92,5 @@ class ModuleManager(object):
     def add_upi_module(self, upi, pyModuleName, className):
         pyModule = self.my_import(pyModuleName)
         moduleContructor = getattr(pyModule, className)
-        upiModule = moduleContructor(self)
+        upiModule = moduleContructor(self.controller)
         return upiModule
