@@ -105,7 +105,7 @@ class Controller(Greenlet):
         self._exec_time = None
         self._delay = None
         self._timeout = None
-        self._blocking = False
+        self._blocking = True
         self._callback = None
         #container for blocking calls
         self._asyncResults = {}
@@ -155,7 +155,7 @@ class Controller(Greenlet):
         self._timeout = value
         return self
 
-    def blocking(self, value=False):
+    def blocking(self, value=True):
         self._blocking = value
         return self
 
@@ -170,7 +170,7 @@ class Controller(Greenlet):
         self._exec_time = None
         self._delay = None
         self._timeout = None
-        self._blocking = False
+        self._blocking = True
         self._callback = None
 
 
@@ -278,9 +278,11 @@ class Controller(Greenlet):
 
         if delay:
             cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
+            blocking = False
 
         if exec_time:
             cmdDesc.exec_time = str(exec_time)
+            blocking = False
 
 
         #count nodes if list passed
@@ -292,6 +294,7 @@ class Controller(Greenlet):
         #set callback for this function call 
         if callback:
             self.callbacks[callId] = CallIdCallback(callback, nodeNum)
+            blocking = False
 
         #if blocking call, wait for response
         if blocking:
@@ -321,7 +324,7 @@ class Controller(Greenlet):
             del self._asyncResults[callId]
             return response
 
-        return callId
+        return None
 
 
     def process_msgs(self, msgContainer):
