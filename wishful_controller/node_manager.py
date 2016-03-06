@@ -96,6 +96,9 @@ class NodeManager(object):
 
 
     def get_node_by_str(self, string):
+        if isinstance(string, Node):
+            return string
+
         node = None
         node = self.get_node_by_ip(string)
         if node:
