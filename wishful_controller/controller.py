@@ -343,6 +343,9 @@ class Controller(Greenlet):
         elif cmdDesc.type == msgs.get_msg_type(msgs.NodeExitMsg):
             self.nodeManager.remove_node(msgContainer)
 
+        elif cmdDesc.type == "hierarchical_control":
+            self.hc.receive_from_local_ctr_program(msg)
+
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
