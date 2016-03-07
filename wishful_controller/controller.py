@@ -14,6 +14,7 @@ import upis_builder
 from transport_channel import TransportChannel
 from node_manager import NodeManager, Node
 from module_manager import ModuleManager
+from rule_manager import RuleManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -98,6 +99,9 @@ class Controller(Greenlet):
         self.radio = builder.create_radio()
         self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
+
+        #Rule manager
+        self.rule = RuleManager(self)
 
         #function call context
         self._scope = None
