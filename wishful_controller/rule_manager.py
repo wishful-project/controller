@@ -59,7 +59,7 @@ class RuleManager(object):
             myRule.ctrl_cb(group=group, node=node, ruleId=rule_id, data=msg)
 
 
-    def add(self, event, filters=[], match=None, action=None, permanence=Permanance.PERSISTENT, ctrl_callback=None):
+    def add(self, event, pktMatch=None, selector=None, filters=[], match=None, action=None, permanence=Permanance.PERSISTENT, ctrl_callback=None):
         self.log.debug("Adding new rule to node".format())
 
         destNode = self.controller._scope
@@ -71,7 +71,8 @@ class RuleManager(object):
             notify_ctrl = True
 
         #TODO: improve serialization
-        rule = {"event":event, "filters":filters, "match":match, "action":action, "permanence":permanence, "notify_ctrl":notify_ctrl}
+        rule = {"event":event, "pktMatch":pktMatch, "selector":selector, "filters":filters, 
+                "match":match, "action":action, "permanence":permanence, "notify_ctrl":notify_ctrl}
 
         rule_id = self.controller.blocking(True).mgmt.add_rule(rule)
         descriptor = RuleDescriptor(self, destNodeUuid, rule_id, event, filters, match, action, permanence, ctrl_callback)
