@@ -40,6 +40,9 @@ class RuleManager(object):
         self.ruleIdGen = self.ruleIdGen + 1
         return self.ruleIdGen
 
+    def _receive(self, msg):
+        pass
+
     def add(self, event, filters=[], match=None, action=None, permanence=Permanance.PERSISTENT, ctrl_callback=None):
         self.log.debug("Adding new rule to node".format())
 
@@ -66,4 +69,4 @@ class RuleManager(object):
             retVal = self.controller.blocking(True).node(agentUuid).mgmt.delete_rule(ruleId)
         else:
             retVal = self.controller.blocking(True).mgmt.delete_rule(ruleId)
-        return retVal       
+        return retVal
