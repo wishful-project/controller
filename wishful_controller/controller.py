@@ -351,7 +351,7 @@ class Controller(Greenlet):
             self.hc.receive_from_local_ctr_program(msg)
 
         elif cmdDesc.type == "wishful_rule":
-            self.rule._receive(msg)
+            self.rule._receive("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
 
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))

@@ -40,8 +40,24 @@ class RuleManager(object):
         self.ruleIdGen = self.ruleIdGen + 1
         return self.ruleIdGen
 
-    def _receive(self, msg):
-        pass
+    def _receive(self, group, node, msg):
+        node_uuid = msg["node_uuid"]
+        rule_id = msg["rule_id"]
+        msg = msg["msg"]
+
+        node_rules = []
+        if node_uuid in self.rules_by_node:
+            node_rules = self.rules_by_node[node_uuid]
+
+        myRule = None
+        for rule in node_rules:
+            if rule_id == rule.id:
+                myRule = rule
+                break
+
+        if myRule:
+            myRule.ctrl_cb(group=group, node=node, ruleId=rule_id, data=msg)
+
 
     def add(self, event, filters=[], match=None, action=None, permanence=Permanance.PERSISTENT, ctrl_callback=None):
         self.log.debug("Adding new rule to node".format())
@@ -50,7 +66,12 @@ class RuleManager(object):
         destNode = self.controller.nodeManager.get_node_by_str(destNode)
         destNodeUuid = destNode.id
 
-        rule = {"event":event, "filters":filters, "match":match, "action":action, "permanence":permanence}
+        notify_ctrl = False
+        if ctrl_callback:
+            notify_ctrl = True
+
+        #TODO: improve serialization
+        rule = {"event":event, "filters":filters, "match":match, "action":action, "permanence":permanence, "notify_ctrl":notify_ctrl}
 
         rule_id = self.controller.blocking(True).mgmt.add_rule(rule)
         descriptor = RuleDescriptor(self, destNodeUuid, rule_id, event, filters, match, action, permanence, ctrl_callback)
