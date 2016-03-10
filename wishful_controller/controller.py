@@ -203,6 +203,11 @@ class Controller(Greenlet):
         local_func_call_context._callback = None
 
 
+    def fire_callback(self, callback, *args, **kwargs):
+        self._clear_call_context()
+        callback(*args, **kwargs)
+
+
     def add_module(self, moduleName, pyModuleName, className, kwargs):
         self.moduleManager.add_module(moduleName, pyModuleName, className, kwargs)
 
@@ -282,7 +287,6 @@ class Controller(Greenlet):
         #TODO: support timeout, on controller and agent sides?
 
         #get function call context
-        #TODO: setting and getting function call context is not thread-safe, improve it
         scope = local_func_call_context._scope
         iface = local_func_call_context._iface
         exec_time = local_func_call_context._exec_time
@@ -381,7 +385,6 @@ class Controller(Greenlet):
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
 
-            #TODO: execute callback in new thread, in case there is loop inside
             callId = cmdDesc.call_id
             if callId in self._asyncResults:
                 self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
@@ -389,13 +392,16 @@ class Controller(Greenlet):
                 if cmdDesc.call_id in self.callbacks:
                     callbackObj = self.callbacks[cmdDesc.call_id]
                     callback = callbackObj.get_callback()
-                    callback("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    gevent.spawn(self.fire_callback, callback, "all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
                     if callbackObj.ready_to_remove():
                         del self.callbacks[cmdDesc.call_id]
 
                 elif cmdDesc.func_name in self.callbacks:
-                    self.callbacks[cmdDesc.func_name]("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                    callback = self.callbacks[cmdDesc.func_name]
+                    gevent.spawn(self.fire_callback, callback, "all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+
                 elif self.default_callback:
-                    self.default_callback("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
+                    gevent.spawn(self.fire_callback, self.default_callback, "all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), cmdDesc.func_name, msg)
+
                 else:
                     self.log.debug("Response to: {}:{} not served".format(cmdDesc.type, cmdDesc.func_name))
