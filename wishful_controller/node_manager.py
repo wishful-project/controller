@@ -50,15 +50,10 @@ class Node(object):
                     self.iface_to_modules[iface.id] = [str(module.id)]
 
     def __str__(self):
-        print "ID:", self.id
-        print "IP:", self.ip
-        print "Name:", self.name
-        print "Info:", self.info
-        print "Modules", self.modules
-        print "Module_Functions", self.functions
-        print "Interfaces", self.interfaces
-        print "Iface_Modules", self.iface_to_modules
-        return ""
+        string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \nModules: {} \
+                  \nModule_Functions: {} \nInterfaces: {} \nIface_Modules {} \
+                  ".format(self.id, self.ip, self.name, self.info, self.modules, self.functions, self.interfaces, self.iface_to_modules)
+        return string
 
 
 class NodeManager(object):
