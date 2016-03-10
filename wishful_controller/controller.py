@@ -7,6 +7,7 @@ import datetime
 import gevent
 from gevent import Greenlet
 from gevent.event import AsyncResult
+from gevent.local import local
 
 import wishful_framework as msgs
 import upis_builder
@@ -71,6 +72,8 @@ class AsyncResultCollector(object):
             self.asyncResult.set()
 
 
+local_func_call_context = local()
+
 class Controller(Greenlet):
     def __init__(self, dl, ul):
         Greenlet.__init__(self)
@@ -110,6 +113,10 @@ class Controller(Greenlet):
         self._timeout = None
         self._blocking = True
         self._callback = None
+
+        #fill thread local variable with default values
+        self._clear_call_context()
+        
         #container for blocking calls
         self._asyncResults = {}
 
@@ -121,8 +128,10 @@ class Controller(Greenlet):
         self.kill()
 
     def _run(self):
-        self.log.debug("Controller starts".format())
+        #fill thread local variable with default values
+        self._clear_call_context()
 
+        self.log.debug("Controller starts".format())
         self.log.debug("Nofity START to all modules")
         self.moduleManager.start()
 
@@ -132,38 +141,47 @@ class Controller(Greenlet):
 
     def group(self, group):
         self._scope = group
-        return self       
+        local_func_call_context._scope = group
+        return self
 
     def node(self, node):
         self._scope = node
+        local_func_call_context._scope = node
         return self        
 
     def nodes(self, nodelist):
         self._scope = nodelist
+        local_func_call_context._scope = nodelist
         return self
 
     def iface(self, iface):
         self._iface = iface
+        local_func_call_context._iface = iface
         return self
 
     def exec_time(self, exec_time):
         self._exec_time = exec_time
+        local_func_call_context._exec_time = exec_time
         return self
 
     def delay(self, delay):
         self._delay = delay
+        local_func_call_context._delay = delay
         return self
 
     def timeout(self, value):
         self._timeout = value
+        local_func_call_context._timeout = value
         return self
 
     def blocking(self, value=True):
         self._blocking = value
+        local_func_call_context._blocking = value
         return self
 
     def callback(self, callback):
         self._callback = callback
+        local_func_call_context._callback = callback
         return self
 
 
@@ -175,6 +193,14 @@ class Controller(Greenlet):
         self._timeout = None
         self._blocking = True
         self._callback = None
+
+        local_func_call_context._scope = None
+        local_func_call_context._iface = None
+        local_func_call_context._exec_time = None
+        local_func_call_context._delay = None
+        local_func_call_context._timeout = None
+        local_func_call_context._blocking = True
+        local_func_call_context._callback = None
 
 
     def add_module(self, moduleName, pyModuleName, className, kwargs):
@@ -257,13 +283,13 @@ class Controller(Greenlet):
 
         #get function call context
         #TODO: setting and getting function call context is not thread-safe, improve it
-        scope = self._scope
-        iface = self._iface
-        exec_time = self._exec_time
-        delay = self._delay
-        timeout = self._timeout
-        blocking = self._blocking
-        callback = self._callback
+        scope = local_func_call_context._scope
+        iface = local_func_call_context._iface
+        exec_time = local_func_call_context._exec_time
+        delay = local_func_call_context._delay
+        timeout = local_func_call_context._timeout
+        blocking = local_func_call_context._blocking
+        callback = local_func_call_context._callback
 
         self._clear_call_context()
 
