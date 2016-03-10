@@ -41,6 +41,8 @@ class CallIdCallback(object):
 
 class AsyncResultCollector(object):
     def __init__(self, callNum):
+        self.log = logging.getLogger("{module}.{name}".format(
+            module=self.__class__.__module__, name=self.__class__.__name__))
         self.callNum = callNum
         self.results = {}
         self.ready = False
@@ -58,8 +60,9 @@ class AsyncResultCollector(object):
             return self.return_response()
 
         try:
+            self.log.debug("Waiting for result in blocking call")
             self.asyncResult.get(timeout=timeout)
-        except:
+        except gevent.timeout.Timeout as e:
             return None
         return self.return_response()
 
