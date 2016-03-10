@@ -96,6 +96,7 @@ class RuleManager(object):
                     break
             if myRule:
                 self.rules_by_node[agentUuid].remove(myRule)
+                del myRule
 
         if agentUuid:
             retVal = self.controller.blocking(True).node(agentUuid).mgmt.delete_rule(ruleId)
