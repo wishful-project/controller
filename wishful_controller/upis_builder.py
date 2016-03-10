@@ -123,29 +123,47 @@ class UpiBuilder(object):
         decorated_fun = _add_function(function)
         return decorated_fun
 
+
+    def find_upi_functions(self, module, upiType, modules):
+        for m in [submodule for submodule in module.__dict__.values() if inspect.ismodule(submodule)]:
+            self.find_upi_functions(m, upiType, modules)
+            mName = m.__name__.split(".")
+            mName = mName[len(mName)-1]
+            if mName == upiType:
+                modules.append(m)
+
     def create_radio(self):
-        for method in dir(wishful_upis.radio):
-            if callable(getattr(wishful_upis.radio, method)):
-                function = getattr(wishful_upis.radio, method)
-                function = self.perpare_function(method, function)
-                setattr(UpiRadio, method, function)
+        modules = []
+        self.find_upi_functions(wishful_upis, "radio", modules)
+        for module in modules:
+            for method in dir(module):
+                if callable(getattr(module, method)):
+                    function = getattr(module, method)
+                    function = self.perpare_function(method, function)
+                    setattr(UpiRadio, method, function)
         radio = UpiRadio(self._ctrl)
         return radio
 
     def create_net(self):
-        for method in dir(wishful_upis.net):
-            if callable(getattr(wishful_upis.net, method)):
-                function = getattr(wishful_upis.net, method)
-                function = self.perpare_function(method, function)
-                setattr(UpiNet, method, function)
+        modules = []
+        self.find_upi_functions(wishful_upis, "net", modules)
+        for module in modules:
+            for method in dir(module):
+                if callable(getattr(module, method)):
+                    function = getattr(module, method)
+                    function = self.perpare_function(method, function)
+                    setattr(UpiNet, method, function)
         net = UpiNet(self._ctrl)
         return net
 
     def create_mgmt(self):
-        for method in dir(wishful_upis.mgmt):
-            if callable(getattr(wishful_upis.mgmt, method)):
-                function = getattr(wishful_upis.mgmt, method)
-                function = self.perpare_function(method, function)
-                setattr(UpiMgmt, method, function)
+        modules = []
+        self.find_upi_functions(wishful_upis, "mgmt", modules)
+        for module in modules:
+            for method in dir(module):
+                if callable(getattr(module, method)):
+                    function = getattr(module, method)
+                    function = self.perpare_function(method, function)
+                    setattr(UpiMgmt, method, function)
         mgmt = UpiMgmt(self._ctrl)
         return mgmt
