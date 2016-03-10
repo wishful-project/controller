@@ -21,8 +21,6 @@ __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
 __email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
 
-#TODO: improve hello sending, add scheduler + timeout mechanism for node removal, 
-
 
 class CallIdCallback(object):
     def __init__(self, cb, callNum):
@@ -55,12 +53,14 @@ class AsyncResultCollector(object):
             key, value = self.results.popitem()
             return value       
 
-    def get(self):
+    def get(self, block=True, timeout=None):
         if len(self.results.values()) == self.callNum:
             return self.return_response()
 
-        #TODO: add timeout
-        self.asyncResult.get()
+        try:
+            self.asyncResult.get(timeout=timeout)
+        except:
+            return None
         return self.return_response()
 
 
@@ -353,7 +353,7 @@ class Controller(Greenlet):
 
         #if blocking call, wait for response
         if blocking:
-            response = asyncResultCollector.get()
+            response = asyncResultCollector.get(timeout=timeout)
             del self._asyncResults[callId]
             return response
 

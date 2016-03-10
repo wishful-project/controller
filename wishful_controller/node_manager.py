@@ -1,6 +1,7 @@
 import logging
 import time
 import sys
+import gevent
 import wishful_framework as msgs
 
 __author__ = "Piotr Gawlowicz"
@@ -33,6 +34,10 @@ class Node(object):
         self.interfaces = {}
         self.iface_to_modules = {}
 
+        self._stop = False
+        self._helloTimeout = 9
+        self._timerCallback = None
+
         for module in msg.modules:
             self.modules[module.id] = str(module.name)
             for func in module.functions:
@@ -54,6 +59,20 @@ class Node(object):
                   \nModule_Functions: {} \nInterfaces: {} \nIface_Modules {} \
                   ".format(self.id, self.ip, self.name, self.info, self.modules, self.functions, self.interfaces, self.iface_to_modules)
         return string
+
+    def set_timer_callback(self, cb):
+        self._timerCallback = cb
+
+    def hello_timer(self):
+        while not self._stop and self._helloTimeout:
+            gevent.sleep(1)
+            self._helloTimeout = self._helloTimeout - 1
+
+        #remove node
+        self._timerCallback(self)
+
+    def refresh_hello_timer(self):
+        self._helloTimeout = 9
 
 
 class NodeManager(object):
@@ -122,6 +141,10 @@ class NodeManager(object):
         self.log.debug("New node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
         self.controller.transport.subscribe_to(agentId)
 
+        #start hello timeout timer
+        node.set_timer_callback(self.remove_node_hello_timer)
+        gevent.spawn(node.hello_timer)
+
         if node and self.newNodeCallback:
             self.newNodeCallback(node)
 
@@ -144,6 +167,16 @@ class NodeManager(object):
         return node
 
 
+    def remove_node_hello_timer(self, node):
+        reason = "HelloTimeout"
+        self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(node.id, reason))
+
+        self.nodes.remove(node)
+
+        if node and self.nodeExitCallback:
+            self.nodeExitCallback(node, reason)
+
+
     def remove_node(self, msgContainer):
         topic = msgContainer[0]
         cmdDesc = msgContainer[1]
@@ -155,7 +188,7 @@ class NodeManager(object):
         node = self.get_node_by_id(agentId)
 
         if not node:
-            return [None,None]
+            return
 
         self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(agentId, reason))
 
@@ -163,8 +196,6 @@ class NodeManager(object):
 
         if node and self.nodeExitCallback:
             self.nodeExitCallback(node, reason)
-
-        return [node, reason]
 
 
     def send_hello_msg_to_node(self, nodeId):
@@ -190,5 +221,6 @@ class NodeManager(object):
         msg.ParseFromString(msgContainer[2])
 
         self.send_hello_msg_to_node(str(msg.uuid))
-        #TODO: reschedule agent delete function in scheduler, support aspscheduler first
-        pass
+
+        node = self.get_node_by_id(str(msg.uuid))
+        node.refresh_hello_timer()
