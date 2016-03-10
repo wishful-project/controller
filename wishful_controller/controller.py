@@ -8,7 +8,6 @@ import gevent
 from gevent import Greenlet
 from gevent.event import AsyncResult
 
-from controller_module import *
 import wishful_framework as msgs
 import upis_builder
 from transport_channel import TransportChannel
