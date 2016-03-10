@@ -87,6 +87,16 @@ class RuleManager(object):
 
     def remove(self, ruleId, agentUuid=None):
         self.log.debug("remove rule with id: {}".format(ruleId))
+
+        if agentUuid in self.rules_by_node:
+            myRule = None
+            for rule in self.rules_by_node[agentUuid]:
+                if ruleId == rule.id:
+                    myRule = rule
+                    break
+            if myRule:
+                self.rules_by_node[agentUuid].remove(myRule)
+
         if agentUuid:
             retVal = self.controller.blocking(True).node(agentUuid).mgmt.delete_rule(ruleId)
         else:
