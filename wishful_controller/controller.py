@@ -281,7 +281,7 @@ class Controller(Greenlet):
         self.transport.send_downlink_msg(myMsgContainter)
 
 
-    def send_cmd(self, upi_type, fname, *args, **kwargs):
+    def exec_cmd(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
         #TODO: support timeout, on controller and agent sides?
