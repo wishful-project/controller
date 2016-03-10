@@ -10,7 +10,7 @@ from gevent.event import AsyncResult
 from gevent.local import local
 
 import wishful_framework as msgs
-import upis_builder
+from wishful_framework import upis_builder
 from transport_channel import TransportChannel
 from node_manager import NodeManager, Node
 from module_manager import ModuleManager
