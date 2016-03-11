@@ -46,9 +46,13 @@ class AsyncResultCollector(object):
         self.callNum = callNum
         self.results = {}
         self.ready = False
+        self.exception = None
         self.asyncResult = AsyncResult()
 
     def return_response(self):
+        if self.exception:
+            raise self.exception
+
         if len(self.results.values()) > 1:
             return self.results
         else:
@@ -66,6 +70,13 @@ class AsyncResultCollector(object):
             return None
         return self.return_response()
 
+    def set_exception(self, node, e):
+        self.exception = e
+        self.results[node] = e
+
+        if len(self.results.values()) == self.callNum:
+            self.ready = True
+            self.asyncResult.set()
 
     def set(self, node, msg):
         self.results[node] = msg
@@ -420,7 +431,13 @@ class Controller(Greenlet):
 
             callId = cmdDesc.call_id
             if callId in self._asyncResults:
-                self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                #TODO: define new protobuf message for return values; currently using repeat_number in CmdDesc 
+                #0-executed correctly, 1-exception
+                if cmdDesc.repeat_number == 0:
+                    self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+                else:
+                    self._asyncResults[callId].set_exception(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+
             else:
                 if cmdDesc.call_id in self.callbacks:
                     callbackObj = self.callbacks[cmdDesc.call_id]
