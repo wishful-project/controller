@@ -171,10 +171,11 @@ class NodeManager(object):
         reason = "HelloTimeout"
         self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(node.id, reason))
 
-        self.nodes.remove(node)
+        if node and node in self.nodes:
+            self.nodes.remove(node)
 
-        if node and self.nodeExitCallback:
-            self.nodeExitCallback(node, reason)
+            if self.nodeExitCallback:
+                self.nodeExitCallback(node, reason)
 
 
     def remove_node(self, msgContainer):
@@ -192,10 +193,11 @@ class NodeManager(object):
 
         self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(agentId, reason))
 
-        self.nodes.remove(node)
+        if node and node in self.nodes:
+            self.nodes.remove(node)
 
-        if node and self.nodeExitCallback:
-            self.nodeExitCallback(node, reason)
+            if self.nodeExitCallback:
+                self.nodeExitCallback(node, reason)
 
 
     def send_hello_msg_to_node(self, nodeId):
