@@ -84,6 +84,8 @@ class Controller(Greenlet):
             module=self.__class__.__module__, name=self.__class__.__name__))
 
         self.uuid = str(uuid.uuid4())
+        self.name = "Controller"
+        self.info = "WiSHFUL COntroller"
         self.config = None
 
         self.default_callback = None
@@ -137,10 +139,11 @@ class Controller(Greenlet):
         self.log.debug("Controller starts".format())
         self.log.debug("Nofity START to all modules")
         self.moduleManager.start()
+        self.transport.start()
 
         self.running = True
         while self.running:
-            self.transport.start()
+            self.transport.start_receiving()
 
     def group(self, group):
         self._scope = group
@@ -211,6 +214,11 @@ class Controller(Greenlet):
         callback(*args, **kwargs)
 
 
+    def set_controller_info(self, name=None, info=None):
+        self.name = name
+        self.info = info
+
+
     def add_module(self, moduleName, pyModuleName, className, kwargs):
         self.moduleManager.add_module(moduleName, pyModuleName, className, kwargs)
 
@@ -224,14 +232,19 @@ class Controller(Greenlet):
     def load_config(self, config):
         self.log.debug("Config: {}".format(config))
 
-        #load modules
-        moduleDesc = config['modules']
-        for m_name, m_params in moduleDesc.iteritems():
-            kwargs = {}
-            if 'kwargs' in m_params:
-                kwargs = m_params['kwargs']
+        if "controller" in config:
+            controllerInfo = config["controller"]
+            print controllerInfo
 
-            self.add_module(m_name, m_params['module'], m_params['class_name'],kwargs)
+        #load modules
+        if 'modules' in config:
+            moduleDesc = config['modules']
+            for m_name, m_params in moduleDesc.iteritems():
+                kwargs = {}
+                if 'kwargs' in m_params:
+                    kwargs = m_params['kwargs']
+
+                self.add_module(m_name, m_params['module'], m_params['class_name'], kwargs)
 
 
     def new_node_callback(self, **options):
@@ -287,8 +300,6 @@ class Controller(Greenlet):
     def exec_cmd(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
         
-        #TODO: support timeout, on controller and agent sides?
-
         #get function call context
         scope = local_func_call_context._scope
         iface = local_func_call_context._iface
