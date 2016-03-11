@@ -78,7 +78,7 @@ class AsyncResultCollector(object):
 local_func_call_context = local()
 
 class Controller(Greenlet):
-    def __init__(self, dl, ul):
+    def __init__(self, dl=None, ul=None):
         Greenlet.__init__(self)
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
@@ -236,23 +236,23 @@ class Controller(Greenlet):
             controllerInfo = config["controller"]
             self.log.info("Controller info from config file: {}".format(controllerInfo))
 
-            if "name" in config:
-                self.name = config["name"]
+            if "name" in controllerInfo:
+                self.name = controllerInfo["name"]
 
-            if "info" in config:
-                self.info = config["info"]
+            if "info" in controllerInfo:
+                self.info = controllerInfo["info"]
+            
+            if "dl" in controllerInfo:
+                self.transport.set_downlink(controllerInfo["dl"])
 
-            if "dl" in config:
-                self.transport.set_downlink(config["dl"])
+            if "downlink" in controllerInfo:
+                self.transport.set_downlink(controllerInfo["downlink"])
 
-            if "downlink" in config:
-                self.transport.set_downlink(config["downlink"])
+            if "ul" in controllerInfo:
+                self.transport.set_uplink(controllerInfo["ul"])
 
-            if "ul" in config:
-                self.transport.set_uplink(config["ul"])
-
-            if "uplink" in config:
-                self.transport.set_uplink(config["uplink"])
+            if "uplink" in controllerInfo:
+                self.transport.set_uplink(controllerInfo["uplink"])
 
         #load modules
         if 'modules' in config:

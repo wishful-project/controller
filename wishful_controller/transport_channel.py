@@ -39,10 +39,12 @@ class TransportChannel(object):
 
 
     def set_downlink(self, downlink):
+        self.log.debug("Set Downlink: {}".format(downlink))
         self.downlink = downlink
 
 
     def set_uplink(self, uplink):
+        self.log.debug("Set Uplink: {}".format(uplink))
         self.uplink = uplink
 
 
