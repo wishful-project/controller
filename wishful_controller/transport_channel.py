@@ -101,6 +101,7 @@ class TransportChannel(object):
 
 
     def start(self):
+        self.log.debug("Controller on DL-{}, UP-{}".format(self.downlink, self.uplink))
         self.dl_socket.bind(self.downlink)
         self.ul_socket.bind(self.uplink)
 

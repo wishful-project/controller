@@ -234,14 +234,14 @@ class Controller(Greenlet):
 
         if "controller" in config:
             controllerInfo = config["controller"]
-            self.log.info("Controller info from config file: {}".format(controllerInfo))
+            self.log.debug("Controller info from config file: {}".format(controllerInfo))
 
             if "name" in controllerInfo:
                 self.name = controllerInfo["name"]
 
             if "info" in controllerInfo:
                 self.info = controllerInfo["info"]
-            
+
             if "dl" in controllerInfo:
                 self.transport.set_downlink(controllerInfo["dl"])
 
