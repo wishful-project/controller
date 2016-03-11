@@ -234,7 +234,25 @@ class Controller(Greenlet):
 
         if "controller" in config:
             controllerInfo = config["controller"]
-            print controllerInfo
+            self.log.info("Controller info from config file: {}".format(controllerInfo))
+
+            if "name" in config:
+                self.name = config["name"]
+
+            if "info" in config:
+                self.info = config["info"]
+
+            if "dl" in config:
+                self.transport.set_downlink(config["dl"])
+
+            if "downlink" in config:
+                self.transport.set_downlink(config["downlink"])
+
+            if "ul" in config:
+                self.transport.set_uplink(config["ul"])
+
+            if "uplink" in config:
+                self.transport.set_uplink(config["uplink"])
 
         #load modules
         if 'modules' in config:
