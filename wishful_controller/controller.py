@@ -219,14 +219,11 @@ class Controller(Greenlet):
         self.info = info
 
 
-    def add_module(self, moduleName, pyModuleName, className, kwargs):
-        self.moduleManager.add_module(moduleName, pyModuleName, className, kwargs)
-
-
-    def add_upi_module(self, upi, pyModuleName, className, importAs):
-        self.log.debug("Adding new UPI module: {}:{}:{}".format(pyModuleName, className, importAs))
-        upiModule = self.moduleManager.add_upi_module(upi, pyModuleName, className)
-        setattr(self, importAs, upiModule)
+    def add_module(self, moduleName, pyModuleName, className, kwargs={}, importAs=None):
+        self.log.debug("Adding module: {}:{}:{}:{}".format(moduleName, pyModuleName, className, kwargs))
+        upiModule = self.moduleManager.add_module(moduleName, pyModuleName, className, kwargs)
+        if importAs:
+            setattr(self, importAs, upiModule)
 
 
     def load_config(self, config):
@@ -259,10 +256,14 @@ class Controller(Greenlet):
             moduleDesc = config['modules']
             for m_name, m_params in moduleDesc.iteritems():
                 kwargs = {}
+                importAs = None
                 if 'kwargs' in m_params:
                     kwargs = m_params['kwargs']
 
-                self.add_module(m_name, m_params['module'], m_params['class_name'], kwargs)
+                if "import_as" in m_params:
+                    importAs = m_params['import_as']
+
+                self.add_module(m_name, m_params['module'], m_params['class_name'], kwargs, importAs)
 
 
     def new_node_callback(self, **options):

@@ -80,7 +80,8 @@ class ModuleManager(object):
         moduleId = self.generate_new_module_id()
 
         pyModule = self.my_import(pyModuleName)
-        wishful_module = getattr(pyModule, className)(**kwargs)
+        moduleContructor = getattr(pyModule, className)
+        wishful_module = moduleContructor(self.controller, **kwargs)
         wishful_module.id = moduleId
 
         self.modules[moduleId] = wishful_module
@@ -88,9 +89,4 @@ class ModuleManager(object):
         if moduleName == "discovery":
             self.discoveryModule = wishful_module
 
-        
-    def add_upi_module(self, upi, pyModuleName, className):
-        pyModule = self.my_import(pyModuleName)
-        moduleContructor = getattr(pyModule, className)
-        upiModule = moduleContructor(self.controller)
-        return upiModule
+        return wishful_module
