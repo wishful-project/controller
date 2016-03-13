@@ -11,10 +11,10 @@ from gevent.local import local
 
 import wishful_framework as msgs
 from wishful_framework import upis_builder
+from wishful_framework import rule_manager
 from transport_channel import TransportChannel
 from node_manager import NodeManager, Node
 from module_manager import ModuleManager
-from rule_manager import RuleManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -119,7 +119,7 @@ class Controller(Greenlet):
         self.mgmt = builder.create_mgmt()
 
         #Rule manager
-        self.rule = RuleManager(self)
+        self.rule = rule_manager.RuleManager(self)
 
         #function call context
         self._scope = None
