@@ -31,6 +31,7 @@ class Node(object):
         self.info = str(msg.info)
         self.modules = {}
         self.functions = {}
+        self.generators = {}
         self.interfaces = {}
         self.iface_to_modules = {}
 
@@ -46,6 +47,13 @@ class Node(object):
                 else:
                     self.functions[module.id].append(str(func.name))
 
+            for generator in module.generators:
+                if module.id not in self.generators:
+                    self.generators[module.id] = [str(generator.name)]
+                else:
+                    self.generators[module.id].append(str(generator.name))
+
+
         for iface in msg.interfaces:
             self.interfaces[iface.id] = str(iface.name)
             for module in iface.modules:
@@ -55,9 +63,13 @@ class Node(object):
                     self.iface_to_modules[iface.id] = [str(module.id)]
 
     def __str__(self):
-        string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \nModules: {} \
-                  \nModule_Functions: {} \nInterfaces: {} \nIface_Modules {} \
-                  ".format(self.id, self.ip, self.name, self.info, self.modules, self.functions, self.interfaces, self.iface_to_modules)
+        string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \
+                  \nModules: {} \
+                  \nModule_Functions: {} \
+                  \nModule_Generators: {} \
+                  \nInterfaces: {} \
+                  \nIface_Modules {} \
+                  ".format(self.id, self.ip, self.name, self.info, self.modules, self.functions, self.generators, self.interfaces, self.iface_to_modules)
         return string
 
     def set_timer_callback(self, cb):
