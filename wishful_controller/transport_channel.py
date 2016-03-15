@@ -4,6 +4,7 @@ import sys
 import zmq.green as zmq
 from gevent.lock import Semaphore
 import wishful_framework as msgs
+import dill #for pickling what standard pickle can’t cope with
 try:
    import cPickle as pickle
 except:
@@ -63,7 +64,10 @@ class TransportChannel(object):
         msg = msgContainer[2]
 
         if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
-            msg = pickle.dumps(msg)
+            try:
+                msg = pickle.dumps(msg)
+            except:
+                msg = dill.dumps(msg)
         elif cmdDesc.serialization_type == msgs.CmdDesc.PROTOBUF:
             msg = msg.SerializeToString()
 
@@ -92,7 +96,10 @@ class TransportChannel(object):
             cmdDesc.ParseFromString(msgContainer[1])
             msg = msgContainer[2]
             if cmdDesc.serialization_type == msgs.CmdDesc.PICKLE:
-                msg = pickle.loads(msg)
+                try:
+                    msg = pickle.loads(msg)
+                except:
+                    msg = dill.loads(msg)
 
             msgContainer[0] = dest
             msgContainer[1] = cmdDesc

@@ -16,5 +16,5 @@ setup(
     description='Unified Programming Interfaces (UPIs) Framework',
     long_description='Implementation of a wireless controller using the unified programming interfaces (UPIs) of the Wishful project.',
     keywords='wireless control',
-    install_requires=['pyzmq', 'gevent', 'decorator']
+    install_requires=['pyzmq', 'gevent', 'decorator', 'dill']
 )
