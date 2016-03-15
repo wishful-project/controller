@@ -12,6 +12,7 @@ from gevent.local import local
 import wishful_framework as msgs
 from wishful_framework import upis_builder
 from wishful_framework import rule_manager
+from wishful_framework import generator_manager
 from transport_channel import TransportChannel
 from node_manager import NodeManager, Node
 from module_manager import ModuleManager
@@ -120,6 +121,9 @@ class Controller(Greenlet):
 
         #Rule manager
         self.rule = rule_manager.RuleManager(self)
+
+        #Generator manager
+        self.generator = generator_manager.GeneratorManager(self)
 
         #function call context
         self._scope = None
@@ -425,6 +429,9 @@ class Controller(Greenlet):
 
         elif cmdDesc.type == "wishful_rule":
             self.rule._receive("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
+
+        elif cmdDesc.type == "wishful_generator":
+            self.generator._receive("all", self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
 
         else:
             self.log.debug("Controller received message: {}:{} from agent".format(cmdDesc.type, cmdDesc.func_name))
