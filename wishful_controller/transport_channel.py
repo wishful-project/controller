@@ -29,8 +29,8 @@ class TransportChannel(object):
         self.poller = zmq.Poller()
 
         self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
+        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NEW_NODE")
+        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NODE_EXIT")
 
         self.downlinkSocketLock = Semaphore(value=1)
         self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
@@ -51,7 +51,7 @@ class TransportChannel(object):
 
     def subscribe_to(self, topic):
         self.log.debug("Controller subscribes to topic: {}".format(topic))
-        self.ul_socket.setsockopt(zmq.SUBSCRIBE, topic)
+        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE, topic)
  
 
     def set_recv_callback(self, callback):
@@ -59,7 +59,7 @@ class TransportChannel(object):
 
 
     def send_downlink_msg(self, msgContainer):
-        dest = msgContainer[0]
+        msgContainer[0] = msgContainer[0].encode('utf-8')
         cmdDesc = msgContainer[1]
         msg = msgContainer[2]
 
@@ -101,7 +101,7 @@ class TransportChannel(object):
                 except:
                     msg = dill.loads(msg)
 
-            msgContainer[0] = dest
+            msgContainer[0] = dest.decode('utf-8')
             msgContainer[1] = cmdDesc
             msgContainer[2] = msg
             self.recv_callback(msgContainer)

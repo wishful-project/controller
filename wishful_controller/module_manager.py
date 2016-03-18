@@ -45,29 +45,29 @@ class ModuleManager(object):
 
     def start(self):
         self.log.debug("Notify START to modules".format())
-        for module in self.modules.values():
+        for module in list(self.modules.values()):
             module.start()
 
 
     def exit(self):
         self.log.debug("Notify EXIT to modules".format())
-        for module in self.modules.values():
+        for module in list(self.modules.values()):
             module.exit()
 
 
     def connected(self):
         self.log.debug("Notify CONNECTED to modules".format())
-        for module in self.modules.values():
+        for module in list(self.modules.values()):
             module.connected()
 
     def disconnected(self):
         self.log.debug("Notify DISCONNECTED to modules".format())
-        for module in self.modules.values():
+        for module in list(self.modules.values()):
             module.disconnected()
 
 
     def get_iface_id(self, name):
-        for k,v in self.interfaces.iteritems():
+        for k,v in self.interfaces.items():
             if v == name:
                 return k
 

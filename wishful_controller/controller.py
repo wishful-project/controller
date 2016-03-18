@@ -13,9 +13,9 @@ import wishful_framework as msgs
 from wishful_framework import upis_builder
 from wishful_framework import rule_manager
 from wishful_framework import generator_manager
-from transport_channel import TransportChannel
-from node_manager import NodeManager, Node
-from module_manager import ModuleManager
+from .transport_channel import TransportChannel
+from .node_manager import NodeManager, Node
+from .module_manager import ModuleManager
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -54,14 +54,14 @@ class AsyncResultCollector(object):
         if self.exception:
             raise self.exception
 
-        if len(self.results.values()) > 1:
+        if len(list(self.results.values())) > 1:
             return self.results
         else:
             key, value = self.results.popitem()
             return value       
 
     def get(self, block=True, timeout=None):
-        if len(self.results.values()) == self.callNum:
+        if len(list(self.results.values())) == self.callNum:
             return self.return_response()
 
         try:
@@ -75,14 +75,14 @@ class AsyncResultCollector(object):
         self.exception = e
         self.results[node] = e
 
-        if len(self.results.values()) == self.callNum:
+        if len(list(self.results.values())) == self.callNum:
             self.ready = True
             self.asyncResult.set()
 
     def set(self, node, msg):
         self.results[node] = msg
 
-        if len(self.results.values()) == self.callNum:
+        if len(list(self.results.values())) == self.callNum:
             self.ready = True
             self.asyncResult.set()
 
@@ -269,7 +269,7 @@ class Controller(Greenlet):
         #load modules
         if 'modules' in config:
             moduleDesc = config['modules']
-            for m_name, m_params in moduleDesc.iteritems():
+            for m_name, m_params in moduleDesc.items():
                 kwargs = {}
                 importAs = None
                 if 'kwargs' in m_params:
@@ -367,7 +367,7 @@ class Controller(Greenlet):
 
 
         #count nodes if list passed
-        if hasattr(scope, '__iter__'):
+        if hasattr(scope, '__iter__') and not isinstance(scope, str):
             nodeNum = len(scope)
         else:
             nodeNum = 1
@@ -391,7 +391,7 @@ class Controller(Greenlet):
         #it would be more efficient to exploit PUB/SUB zmq mechanism
         #create group with uuid and tell nodes to subscribe to this uuid
         #then send msg to group
-        if hasattr(scope, '__iter__'):
+        if hasattr(scope, '__iter__') and not isinstance(scope, str):
             for node in scope:
                 self.send_cmd_to_node(node, callId, msgContainer)
         else:
