@@ -118,6 +118,7 @@ class Controller(Greenlet):
         self.radio = builder.create_radio()
         self.net = builder.create_net()
         self.mgmt = builder.create_mgmt()
+        self.context = builder.create_context()
 
         #Rule manager
         self.rule = rule_manager.RuleManager(self)
