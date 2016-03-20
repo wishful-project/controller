@@ -29,8 +29,12 @@ class TransportChannel(object):
         self.poller = zmq.Poller()
 
         self.ul_socket = self.context.socket(zmq.SUB) # one SUB socket for uplink communication over topics
-        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NEW_NODE")
-        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NODE_EXIT")
+        if sys.version_info.major >= 3:
+            self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NEW_NODE")
+            self.ul_socket.setsockopt_string(zmq.SUBSCRIBE,  "NODE_EXIT")
+        else:
+            self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NEW_NODE")
+            self.ul_socket.setsockopt(zmq.SUBSCRIBE,  "NODE_EXIT")
 
         self.downlinkSocketLock = Semaphore(value=1)
         self.dl_socket = self.context.socket(zmq.PUB) # one PUB socket for downlink communication over topics
@@ -51,7 +55,10 @@ class TransportChannel(object):
 
     def subscribe_to(self, topic):
         self.log.debug("Controller subscribes to topic: {}".format(topic))
-        self.ul_socket.setsockopt_string(zmq.SUBSCRIBE, topic)
+        if sys.version_info.major >= 3:
+            self.ul_socket.setsockopt_string(zmq.SUBSCRIBE, topic)
+        else:
+            self.ul_socket.setsockopt(zmq.SUBSCRIBE, topic)
  
 
     def set_recv_callback(self, callback):
