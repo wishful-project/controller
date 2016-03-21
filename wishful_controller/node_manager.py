@@ -153,12 +153,17 @@ class NodeManager(object):
         self.nodes = []
         self.groups = []
 
-        self.newNodeCallback = None
-        self.nodeExitCallback = None
+        self.newNodeCallbacks = []
+        self.nodeExitCallbacks = []
 
         self.helloMsgInterval = 3
         self.helloTimeout = 3*self.helloMsgInterval
 
+    def add_new_node_callback(self, callback):
+        self.newNodeCallbacks.append(callback)
+
+    def add_node_exit_callback(self, callback):
+        self.nodeExitCallbacks.append(callback)
 
     def get_node_by_id(self, nid):
         node = None
@@ -214,8 +219,10 @@ class NodeManager(object):
         node.set_timer_callback(self.remove_node_hello_timer)
         gevent.spawn(node.hello_timer)
 
-        if node and self.newNodeCallback:
-            self.newNodeCallback(node)
+        if node and self.newNodeCallbacks:
+            for cb in self.newNodeCallbacks:
+                #TODO: run in new thread in case there is loop insice callback
+                cb(node)
 
         dest = agentId
         cmdDesc.Clear()
@@ -243,8 +250,9 @@ class NodeManager(object):
         if node and node in self.nodes:
             self.nodes.remove(node)
 
-            if self.nodeExitCallback:
-                self.nodeExitCallback(node, reason)
+            if self.nodeExitCallbacks:
+                for cb in self.nodeExitCallbacks:
+                    cb(node, reason)
 
 
     def remove_node(self, msgContainer):
@@ -265,8 +273,9 @@ class NodeManager(object):
         if node and node in self.nodes:
             self.nodes.remove(node)
 
-            if self.nodeExitCallback:
-                self.nodeExitCallback(node, reason)
+            if self.nodeExitCallbacks:
+                for cb in self.nodeExitCallbacks:
+                    cb(node, reason)
 
 
     def send_hello_msg_to_node(self, nodeId):

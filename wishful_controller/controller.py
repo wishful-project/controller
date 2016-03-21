@@ -102,8 +102,6 @@ class Controller(Greenlet):
 
         self.default_callback = None
         self.callbacks = {}
-        self.newNodeCallback = None
-        self.nodeExitCallback = None
         self.call_id_gen = 0
 
         self.moduleManager = ModuleManager(self)
@@ -284,14 +282,14 @@ class Controller(Greenlet):
 
     def new_node_callback(self, **options):
         def decorator(callback):
-            self.nodeManager.newNodeCallback = callback
+            self.nodeManager.add_new_node_callback(callback)
             return callback
         return decorator
 
 
     def node_exit_callback(self, **options):
         def decorator(callback):
-            self.nodeManager.nodeExitCallback = callback
+            self.nodeManager.add_node_exit_callback(callback)
             return callback
         return decorator
 
