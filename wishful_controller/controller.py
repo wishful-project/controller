@@ -322,8 +322,18 @@ class Controller(Greenlet):
         if not isinstance(destNode, Node):
             destNode = self.nodeManager.get_node_by_str(destNode)
 
-        #TODO: check if function is supported by agent, if not raise exception
-        #TODO: check if destNode not empty
+        if not destNode:
+            raise Excpetion("Node is not available")
+
+        #check if function is supported by agent, if not raise exception
+        cmdDesc = msgContainer[0]
+        upi_type = cmdDesc.type
+        fname = cmdDesc.func_name
+        iface = cmdDesc.interface
+        if not destNode.is_upi_supported(iface=iface, upi_type=upi_type, fname=fname):
+            raise Exception("Node: {} does not support UPI Function: {}:{} \
+                for iface: {}, please install proper modules".format(destNode.name, upi_type, fname, iface))
+
 
         #set destination
         myMsgContainter = [destNode.id]
@@ -359,13 +369,16 @@ class Controller(Greenlet):
             cmdDesc.interface = iface
 
         if delay:
-            cmdDesc.exec_time = str(datetime.datetime.now() + datetime.timedelta(seconds=delay))
+            exec_time = datetime.datetime.now() + datetime.timedelta(seconds=delay)
             blocking = False
 
         if exec_time:
             cmdDesc.exec_time = str(exec_time)
             blocking = False
 
+        #call check
+        if exec_time and exec_time < datetime.datetime.now():
+            raise Exception("Scheduling function: {}:{} call in past".format(upi_type,fname))
 
         #count nodes if list passed
         if hasattr(scope, '__iter__') and not isinstance(scope, str):

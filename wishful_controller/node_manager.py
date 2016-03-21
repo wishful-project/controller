@@ -25,6 +25,8 @@ class Group(object):
 
 class Node(object):
     def __init__(self,msg):
+        self.log = logging.getLogger("{module}.{name}".format(
+            module=self.__class__.__module__, name=self.__class__.__name__))
         self.id = str(msg.agent_uuid)
         self.ip = str(msg.ip)
         self.name = str(msg.name)
@@ -34,6 +36,7 @@ class Node(object):
         self.generators = {}
         self.interfaces = {}
         self.iface_to_modules = {}
+        self.modules_without_iface = []
 
         self._stop = False
         self._helloTimeout = 9
@@ -58,9 +61,17 @@ class Node(object):
             self.interfaces[iface.id] = str(iface.name)
             for module in iface.modules:
                 if iface.id in self.iface_to_modules:
-                    self.iface_to_modules[iface.id].append(str(module.id))
+                    self.iface_to_modules[iface.id].append(int(module.id))
                 else:
-                    self.iface_to_modules[iface.id] = [str(module.id)]
+                    self.iface_to_modules[iface.id] = [int(module.id)]
+
+        self.modules_without_iface = self.modules.copy()
+        for ifaceId, moduleIds in self.iface_to_modules.items():
+            for moduleId in moduleIds:
+                moduleId = int(moduleId)
+                if moduleId in list(self.modules_without_iface.keys()):
+                    del self.modules_without_iface[moduleId]
+        self.modules_without_iface = list(self.modules_without_iface.keys())
 
     def __str__(self):
         string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \
@@ -68,8 +79,11 @@ class Node(object):
                   \nModule_Functions: {} \
                   \nModule_Generators: {} \
                   \nInterfaces: {} \
-                  \nIface_Modules {} \
-                  ".format(self.id, self.ip, self.name, self.info, self.modules, self.functions, self.generators, self.interfaces, self.iface_to_modules)
+                  \nIface_Modules: {} \
+                  \nModules_without_iface: {} \
+                  ".format(self.id, self.ip, self.name, self.info, self.modules, 
+                    self.functions, self.generators, self.interfaces, 
+                    self.iface_to_modules, self.modules_without_iface)
         return string
 
     def set_timer_callback(self, cb):
@@ -86,6 +100,49 @@ class Node(object):
     def refresh_hello_timer(self):
         self._helloTimeout = 9
 
+    def get_iface_id(self, name):
+        for k,v in self.interfaces.items():
+            if v == name:
+                return k
+        return None
+
+
+    def is_upi_supported(self, iface, upi_type, fname):
+        moduleIds = []
+
+        self.log.debug("Checking call: {}:{} for iface {} in node {}".format(upi_type,fname, iface, self.name))
+        if iface:
+            ifaceId = self.get_iface_id(str(iface))
+            moduleIds = self.iface_to_modules[ifaceId]
+        else:
+            moduleIds = self.modules_without_iface
+
+        for moduleId in moduleIds:
+            #check module functions
+            if moduleId in self.functions:
+                functions = self.functions[moduleId]
+                if fname in functions:
+                    return True
+
+            #check if function is generator
+            if moduleId in self.generators:
+                generators = self.generators[moduleId]
+                if fname in generators:
+                    raise Exception("UPI: {}:{} is generator in node: {}, please call with generator API".format(upi_type,fname, self.name))
+
+
+        #check if function requires iface
+        if iface:
+            for moduleId in self.modules_without_iface:
+                if moduleId in self.functions and fname in self.functions[moduleId]:
+                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(upi_type,fname,self.name))
+
+                if moduleId in self.generators and fname in self.generators[moduleId]:
+                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(upi_type,fname,self.name))
+
+        raise Exception("UPI function: {}:{} not supported for iface: {} in node: {}, please install proper module".format(upi_type,fname,iface,self.name))
+
+        return False
 
 class NodeManager(object):
     def __init__(self, controller):
