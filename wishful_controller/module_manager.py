@@ -74,19 +74,22 @@ class ModuleManager(object):
         return None
 
 
+    def add_module_obj(self, moduleName, wishfulModule):
+        moduleId = self.generate_new_module_id()
+        wishfulModule.id = moduleId
+
+        self.modules[moduleId] = wishfulModule
+
+        if moduleName == "discovery":
+            self.discoveryModule = wishfulModule
+
+        return wishfulModule
+
+
     def add_module(self, moduleName, pyModuleName, className, kwargs):
         self.log.debug("Add new module: {}:{}:{}".format(moduleName, pyModuleName, className))
 
-        moduleId = self.generate_new_module_id()
-
         pyModule = self.my_import(pyModuleName)
         moduleContructor = getattr(pyModule, className)
-        wishful_module = moduleContructor(self.controller, **kwargs)
-        wishful_module.id = moduleId
-
-        self.modules[moduleId] = wishful_module
-
-        if moduleName == "discovery":
-            self.discoveryModule = wishful_module
-
-        return wishful_module
+        wishfulModule = moduleContructor(self.controller, **kwargs)
+        return self.add_module_obj(moduleName, wishfulModule)

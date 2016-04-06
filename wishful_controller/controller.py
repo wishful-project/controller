@@ -16,6 +16,8 @@ from wishful_framework import generator_manager
 from .transport_channel import TransportChannel
 from .node_manager import NodeManager, Node
 from .module_manager import ModuleManager
+from .hierarchical_control_module import HierarchicalControlModule
+
 
 __author__ = "Piotr Gawlowicz, Mikolaj Chwalisz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -110,6 +112,10 @@ class Controller(Greenlet):
         self.transport = TransportChannel(ul, dl)
         self.transport.subscribe_to(self.uuid)
         self.transport.set_recv_callback(self.process_msgs)
+
+        #Hierarchical Control Module
+        self.hc = HierarchicalControlModule(self)
+        self.hc.set_controller(self)
 
         #UPIs
         builder = upis_builder.UpiBuilder(self)
