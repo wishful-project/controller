@@ -1,7 +1,4 @@
 import logging
-import time
-import sys
-import zmq.green as zmq
 import uuid
 import datetime
 import gevent
@@ -9,6 +6,7 @@ from gevent import Greenlet
 from gevent.event import AsyncResult
 from gevent.local import local
 
+import wishful_upis as upis
 import wishful_framework as msgs
 from wishful_framework import upis_builder
 from wishful_framework import rule_manager
@@ -60,7 +58,7 @@ class AsyncResultCollector(object):
             return self.results
         else:
             key, value = self.results.popitem()
-            return value       
+            return value
 
     def get(self, block=True, timeout=None):
         if len(list(self.results.values())) == self.callNum:
@@ -91,6 +89,7 @@ class AsyncResultCollector(object):
 
 local_func_call_context = local()
 
+
 class Controller(Greenlet):
     def __init__(self, dl=None, ul=None):
         Greenlet.__init__(self)
@@ -113,24 +112,24 @@ class Controller(Greenlet):
         self.transport.subscribe_to(self.uuid)
         self.transport.set_recv_callback(self.process_msgs)
 
-        #Hierarchical Control Module
+        # Hierarchical Control Module
         self.hc = HierarchicalControlModule(self)
         self.hc.set_controller(self)
 
-        #UPIs
+        # UPIs
         builder = upis_builder.UpiBuilder(self)
-        self.radio = builder.create_radio()
-        self.net = builder.create_net()
-        self.mgmt = builder.create_mgmt()
-        self.context = builder.create_context()
+        self.radio = builder.create_upi(upis.radio.Radio, "radio")
+        self.net = builder.create_upi(upis.net.Network, "net")
+        self.mgmt = builder.create_upi(upis.mgmt.Mgmt, "mgmt")
+        self.context = builder.create_upi(upis.context.Context, "context")
 
-        #Rule manager
+        # Rule manager
         self.rule = rule_manager.RuleManager(self)
 
-        #Generator manager
+        # Generator manager
         self.generator = generator_manager.GeneratorManager(self)
 
-        #function call context
+        # function call context
         self._scope = None
         self._iface = None
         self._exec_time = None
@@ -139,10 +138,10 @@ class Controller(Greenlet):
         self._blocking = True
         self._callback = None
 
-        #fill thread local variable with default values
+        # fill thread local variable with default values
         self._clear_call_context()
-        
-        #container for blocking calls
+
+        # container for blocking calls
         self._asyncResults = {}
 
     def stop(self):
@@ -173,7 +172,7 @@ class Controller(Greenlet):
     def node(self, node):
         self._scope = node
         local_func_call_context._scope = node
-        return self        
+        return self
 
     def nodes(self, nodelist):
         self._scope = nodelist
@@ -350,7 +349,7 @@ class Controller(Greenlet):
 
     def exec_cmd(self, upi_type, fname, *args, **kwargs):
         self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
-        
+
         #get function call context
         scope = local_func_call_context._scope
         iface = local_func_call_context._iface
@@ -392,7 +391,7 @@ class Controller(Greenlet):
         else:
             nodeNum = 1
 
-        #set callback for this function call 
+        #set callback for this function call
         if callback:
             self.callbacks[callId] = CallIdCallback(callback, nodeNum)
             blocking = False
@@ -405,7 +404,7 @@ class Controller(Greenlet):
         #Serialize kwargs (they contrain args)
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         msgContainer = [cmdDesc, kwargs]
-        
+
 
         #TODO: currently sending cmd msg to each node separately;
         #it would be more efficient to exploit PUB/SUB zmq mechanism
@@ -458,7 +457,7 @@ class Controller(Greenlet):
 
             callId = cmdDesc.call_id
             if callId in self._asyncResults:
-                #TODO: define new protobuf message for return values; currently using repeat_number in CmdDesc 
+                #TODO: define new protobuf message for return values; currently using repeat_number in CmdDesc
                 #0-executed correctly, 1-exception
                 if cmdDesc.repeat_number == 0:
                     self._asyncResults[callId].set(self.nodeManager.get_node_by_id(cmdDesc.caller_id), msg)
