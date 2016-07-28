@@ -67,7 +67,7 @@ class AsyncResultCollector(object):
         try:
             self.log.debug("Waiting for result in blocking call")
             self.asyncResult.get(timeout=timeout)
-        except gevent.timeout.Timeout as e:
+        except gevent.timeout.Timeout:
             return None
         return self.return_response()
 
@@ -87,18 +87,96 @@ class AsyncResultCollector(object):
             self.asyncResult.set()
 
 
-local_func_call_context = local()
+class CallingContext(local):
+    def __init__(self):
+        # function call context
+        self._scope = None
+        self._iface = None
+        self._exec_time = None
+        self._delay = None
+        self._timeout = None
+        self._blocking = True
+        self._callback = None
+        self._upi_type = None
+        self._upi = None
+        self._args = None
+        self._kwargs = None
 
 
-class Controller(Greenlet):
+class ControllableUnit(object):
+    def __init__(self):
+        self._callingCtx = CallingContext()
+        self._clear_call_context()
+        # UPIs
+        builder = upis_builder.UpiBuilder(self)
+        self.radio = builder.create_upi(upis.radio.Radio, "radio")
+        self.net = builder.create_upi(upis.net.Network, "net")
+        self.mgmt = builder.create_upi(upis.mgmt.Mgmt, "mgmt")
+        self.context = builder.create_upi(upis.context.Context, "context")
+
+    def group(self, group):
+        self._callingCtx._scope = group
+        return self
+
+    def node(self, node):
+        self._callingCtx._scope = node
+        return self
+
+    def nodes(self, nodelist):
+        self._callingCtx._scope = nodelist
+        return self
+
+    def iface(self, iface):
+        self._callingCtx._iface = iface
+        return self
+
+    def exec_time(self, exec_time):
+        self._callingCtx._exec_time = exec_time
+        return self
+
+    def delay(self, delay):
+        self._callingCtx._delay = delay
+        return self
+
+    def timeout(self, value):
+        self._callingCtx._timeout = value
+        return self
+
+    def blocking(self, value=True):
+        self._callingCtx._blocking = value
+        return self
+
+    def callback(self, callback):
+        self._callingCtx._callback = callback
+        return self
+
+    def _clear_call_context(self):
+        self._callingCtx._scope = None
+        self._callingCtx._iface = None
+        self._callingCtx._exec_time = None
+        self._callingCtx._delay = None
+        self._callingCtx._timeout = None
+        self._callingCtx._blocking = True
+        self._callingCtx._callback = None
+        self._callingCtx._upi = None
+        self._callingCtx._args = None
+        self._callingCtx._kwargs = None
+
+    def exec_cmd(self, upi_type, fname, *args, **kwargs):
+        pass
+
+
+
+class Controller(Greenlet, ControllableUnit):
     def __init__(self, dl=None, ul=None):
         Greenlet.__init__(self)
+        ControllableUnit.__init__(self)
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
         self.uuid = str(uuid.uuid4())
         self.name = "Controller"
-        self.info = "WiSHFUL COntroller"
+        self.info = "WiSHFUL Controller"
         self.config = None
 
         self.default_callback = None
@@ -116,30 +194,11 @@ class Controller(Greenlet):
         self.hc = HierarchicalControlModule(self)
         self.hc.set_controller(self)
 
-        # UPIs
-        builder = upis_builder.UpiBuilder(self)
-        self.radio = builder.create_upi(upis.radio.Radio, "radio")
-        self.net = builder.create_upi(upis.net.Network, "net")
-        self.mgmt = builder.create_upi(upis.mgmt.Mgmt, "mgmt")
-        self.context = builder.create_upi(upis.context.Context, "context")
-
         # Rule manager
         self.rule = rule_manager.RuleManager(self)
 
         # Generator manager
         self.generator = generator_manager.GeneratorManager(self)
-
-        # function call context
-        self._scope = None
-        self._iface = None
-        self._exec_time = None
-        self._delay = None
-        self._timeout = None
-        self._blocking = True
-        self._callback = None
-
-        # fill thread local variable with default values
-        self._clear_call_context()
 
         # container for blocking calls
         self._asyncResults = {}
@@ -152,7 +211,7 @@ class Controller(Greenlet):
         self.kill()
 
     def _run(self):
-        #fill thread local variable with default values
+        # fill thread local variable with default values
         self._clear_call_context()
 
         self.log.debug("Controller starts".format())
@@ -164,79 +223,13 @@ class Controller(Greenlet):
         while self.running:
             self.transport.start_receiving()
 
-    def group(self, group):
-        self._scope = group
-        local_func_call_context._scope = group
-        return self
-
-    def node(self, node):
-        self._scope = node
-        local_func_call_context._scope = node
-        return self
-
-    def nodes(self, nodelist):
-        self._scope = nodelist
-        local_func_call_context._scope = nodelist
-        return self
-
-    def iface(self, iface):
-        self._iface = iface
-        local_func_call_context._iface = iface
-        return self
-
-    def exec_time(self, exec_time):
-        self._exec_time = exec_time
-        local_func_call_context._exec_time = exec_time
-        return self
-
-    def delay(self, delay):
-        self._delay = delay
-        local_func_call_context._delay = delay
-        return self
-
-    def timeout(self, value):
-        self._timeout = value
-        local_func_call_context._timeout = value
-        return self
-
-    def blocking(self, value=True):
-        self._blocking = value
-        local_func_call_context._blocking = value
-        return self
-
-    def callback(self, callback):
-        self._callback = callback
-        local_func_call_context._callback = callback
-        return self
-
-
-    def _clear_call_context(self):
-        self._scope = None
-        self._iface = None
-        self._exec_time = None
-        self._delay = None
-        self._timeout = None
-        self._blocking = True
-        self._callback = None
-
-        local_func_call_context._scope = None
-        local_func_call_context._iface = None
-        local_func_call_context._exec_time = None
-        local_func_call_context._delay = None
-        local_func_call_context._timeout = None
-        local_func_call_context._blocking = True
-        local_func_call_context._callback = None
-
-
     def fire_callback(self, callback, *args, **kwargs):
         self._clear_call_context()
         callback(*args, **kwargs)
 
-
     def set_controller_info(self, name=None, info=None):
         self.name = name
         self.info = info
-
 
     def add_module(self, moduleName, pyModuleName, className, kwargs={}, importAs=None):
         self.log.debug("Adding module: {}:{}:{}:{}".format(moduleName, pyModuleName, className, kwargs))
@@ -244,13 +237,13 @@ class Controller(Greenlet):
         if importAs:
             setattr(self, importAs, upiModule)
 
-
     def load_config(self, config):
         self.log.debug("Config: {}".format(config))
 
         if "controller" in config:
             controllerInfo = config["controller"]
-            self.log.debug("Controller info from config file: {}".format(controllerInfo))
+            self.log.debug("Controller info from config\
+                            file: {}".format(controllerInfo))
 
             if "name" in controllerInfo:
                 self.name = controllerInfo["name"]
@@ -270,7 +263,7 @@ class Controller(Greenlet):
             if "uplink" in controllerInfo:
                 self.transport.set_uplink(controllerInfo["uplink"])
 
-        #load modules
+        # load modules
         if 'modules' in config:
             moduleDesc = config['modules']
             for m_name, m_params in moduleDesc.items():
@@ -282,8 +275,8 @@ class Controller(Greenlet):
                 if "import_as" in m_params:
                     importAs = m_params['import_as']
 
-                self.add_module(m_name, m_params['module'], m_params['class_name'], kwargs, importAs)
-
+                self.add_module(m_name, m_params['module'],
+                                m_params['class_name'], kwargs, importAs)
 
     def new_node_callback(self, **options):
         def decorator(callback):
@@ -291,13 +284,11 @@ class Controller(Greenlet):
             return callback
         return decorator
 
-
     def node_exit_callback(self, **options):
         def decorator(callback):
             self.nodeManager.add_node_exit_callback(callback)
             return callback
         return decorator
-
 
     def add_callback(self, function, **options):
         def decorator(callback):
@@ -306,7 +297,6 @@ class Controller(Greenlet):
             return callback
         return decorator
 
-
     def set_default_callback(self, **options):
         def decorator(callback):
             self.log.debug("Setting default callback")
@@ -314,19 +304,16 @@ class Controller(Greenlet):
             return callback
         return decorator
 
-
     def generate_call_id(self):
         self.call_id_gen = self.call_id_gen + 1
         return self.call_id_gen
 
-
     def send_cmd_to_node(self, destNode, callId, msgContainer):
-        #translate to node if needed
+        # translate to node if needed
         if not isinstance(destNode, Node):
             destNode = self.nodeManager.get_node_by_str(destNode)
 
-
-        #check if function is supported by agent, if not raise exception
+        # check if function is supported by agent, if not raise exception
         cmdDesc = msgContainer[0]
         upi_type = cmdDesc.type
         fname = cmdDesc.func_name
@@ -351,15 +338,11 @@ class Controller(Greenlet):
         self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
 
         #get function call context
-        scope = local_func_call_context._scope
-        iface = local_func_call_context._iface
-        exec_time = local_func_call_context._exec_time
-        delay = local_func_call_context._delay
-        timeout = local_func_call_context._timeout
-        blocking = local_func_call_context._blocking
-        callback = local_func_call_context._callback
-
-        self._clear_call_context()
+        ctx = self._callingCtx
+        ctx._upi_type = upi_type
+        ctx._upi = fname
+        ctx._args = args
+        ctx._kwargs = kwargs
 
         nodeNum = None
         callId = str(self.generate_call_id())
@@ -370,34 +353,34 @@ class Controller(Greenlet):
         cmdDesc.func_name = fname
         cmdDesc.call_id = callId
 
-        if iface:
-            cmdDesc.interface = iface
+        if ctx._iface:
+            cmdDesc.interface = ctx._iface
 
-        if delay:
-            exec_time = datetime.datetime.now() + datetime.timedelta(seconds=delay)
-            blocking = False
+        if ctx._delay:
+            exec_time = datetime.datetime.now() + datetime.timedelta(seconds=ctx._delay)
+            ctx._blocking = False
 
-        if exec_time:
-            cmdDesc.exec_time = str(exec_time)
-            blocking = False
+        if ctx._exec_time:
+            cmdDesc.exec_time = str(ctx._exec_time)
+            ctx._blocking = False
 
         #call check
-        if exec_time and exec_time < datetime.datetime.now():
+        if ctx._exec_time and ctx._exec_time < datetime.datetime.now():
             raise Exception("Scheduling function: {}:{} call in past".format(upi_type,fname))
 
         #count nodes if list passed
-        if hasattr(scope, '__iter__') and not isinstance(scope, str):
-            nodeNum = len(scope)
+        if hasattr(ctx._scope, '__iter__') and not isinstance(ctx._scope, str):
+            nodeNum = len(ctx._scope)
         else:
             nodeNum = 1
 
         #set callback for this function call
-        if callback:
-            self.callbacks[callId] = CallIdCallback(callback, nodeNum)
-            blocking = False
+        if ctx._callback:
+            self.callbacks[callId] = CallIdCallback(ctx._callback, nodeNum)
+            ctx._blocking = False
 
         #if blocking call, wait for response
-        if blocking:
+        if ctx._blocking:
             asyncResultCollector = AsyncResultCollector(nodeNum)
             self._asyncResults[callId] = asyncResultCollector
 
@@ -406,24 +389,26 @@ class Controller(Greenlet):
         msgContainer = [cmdDesc, kwargs]
 
 
-        #TODO: currently sending cmd msg to each node separately;
-        #it would be more efficient to exploit PUB/SUB zmq mechanism
-        #create group with uuid and tell nodes to subscribe to this uuid
-        #then send msg to group
-        if hasattr(scope, '__iter__') and not isinstance(scope, str):
-            for node in scope:
+        # TODO: currently sending cmd msg to each node separately
+        # it would be more efficient to exploit PUB/SUB zmq mechanism
+        # create group with uuid and tell nodes to subscribe to this uuid
+        # then send msg to group
+        if hasattr(ctx._scope, '__iter__') and not isinstance(ctx._scope, str):
+            for node in ctx._scope:
                 self.send_cmd_to_node(node, callId, msgContainer)
         else:
-            node = scope
+            node = ctx._scope
             self.send_cmd_to_node(node, callId, msgContainer)
 
 
-        #if blocking call, wait for response
-        if blocking:
-            response = asyncResultCollector.get(timeout=timeout)
+        # if blocking call, wait for response
+        if ctx._blocking:
+            response = asyncResultCollector.get(timeout=ctx._timeout)
             del self._asyncResults[callId]
+            self._clear_call_context()
             return response
 
+        self._clear_call_context()
         return None
 
 

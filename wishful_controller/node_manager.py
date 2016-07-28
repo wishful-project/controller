@@ -1,8 +1,9 @@
 import logging
 import time
-import sys
 import gevent
+import wishful_upis as upis
 import wishful_framework as msgs
+from wishful_framework import upis_builder
 
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -19,12 +20,12 @@ class Group(object):
     def add_node(self, node):
         self.nodes.append(node)
 
-    def remove_node(self,node):
+    def remove_node(self, node):
         self.nodes.remove(node)
 
 
 class Node(object):
-    def __init__(self,msg):
+    def __init__(self, msg, ctrl):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
         self.id = str(msg.agent_uuid)
@@ -38,6 +39,9 @@ class Node(object):
         self.iface_to_modules = {}
         self.modules_without_iface = []
 
+        self._controller = ctrl
+        self.radio = ctrl.radio
+        self.net = ctrl.net
         self._stop = False
         self._helloTimeout = 9
         self._timerCallback = None
@@ -55,7 +59,6 @@ class Node(object):
                     self.generators[module.id] = [str(generator.name)]
                 else:
                     self.generators[module.id].append(str(generator.name))
-
 
         for iface in msg.interfaces:
             self.interfaces[iface.id] = str(iface.name)
@@ -81,10 +84,14 @@ class Node(object):
                   \nInterfaces: {} \
                   \nIface_Modules: {} \
                   \nModules_without_iface: {} \
-                  ".format(self.id, self.ip, self.name, self.info, self.modules, 
-                    self.functions, self.generators, self.interfaces, 
-                    self.iface_to_modules, self.modules_without_iface)
+                  ".format(self.id, self.ip, self.name, self.info,
+                           self.modules, self.functions, self.generators,
+                           self.interfaces, self.iface_to_modules,
+                           self.modules_without_iface)
         return string
+
+    def get_iface(ifaceID):
+        return 1
 
     def set_timer_callback(self, cb):
         self._timerCallback = cb
@@ -94,23 +101,23 @@ class Node(object):
             gevent.sleep(1)
             self._helloTimeout = self._helloTimeout - 1
 
-        #remove node
+        # remove node
         self._timerCallback(self)
 
     def refresh_hello_timer(self):
         self._helloTimeout = 9
 
     def get_iface_id(self, name):
-        for k,v in self.interfaces.items():
+        for k, v in self.interfaces.items():
             if v == name:
                 return k
         return None
 
-
     def is_upi_supported(self, iface, upi_type, fname):
         moduleIds = []
 
-        self.log.debug("Checking call: {}:{} for iface {} in node {}".format(upi_type,fname, iface, self.name))
+        self.log.debug("Checking call: {}:{} for iface {} in node {}".format(
+            upi_type, fname, iface, self.name))
         if iface:
             ifaceId = self.get_iface_id(str(iface))
             moduleIds = self.iface_to_modules[ifaceId]
@@ -118,38 +125,43 @@ class Node(object):
             moduleIds = self.modules_without_iface
 
         for moduleId in moduleIds:
-            #check module functions
+            # check module functions
             if moduleId in self.functions:
                 functions = self.functions[moduleId]
                 if fname in functions:
                     return True
 
-            #check if function is generator
+            # check if function is generator
             if moduleId in self.generators:
                 generators = self.generators[moduleId]
                 if fname in generators:
-                    raise Exception("UPI: {}:{} is generator in node: {}, please call with generator API".format(upi_type,fname, self.name))
+                    raise Exception("UPI: {}:{} is generator in node: {},\
+                                     please call with generator API".format(
+                        upi_type, fname, self.name))
 
-
-        #check if function requires iface
+        # check if function requires iface
         if iface:
             for moduleId in self.modules_without_iface:
                 if moduleId in self.functions and fname in self.functions[moduleId]:
-                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(upi_type,fname,self.name))
+                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(
+                        upi_type, fname, self.name))
 
                 if moduleId in self.generators and fname in self.generators[moduleId]:
-                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(upi_type,fname,self.name))
+                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(
+                        upi_type, fname, self.name))
 
-        raise Exception("UPI function: {}:{} not supported for iface: {} in node: {}, please install proper module".format(upi_type,fname,iface,self.name))
+        raise Exception("UPI function: {}:{} not supported for iface: {} in node: {}, please install proper module".format(
+            upi_type, fname, iface, self.name))
 
         return False
+
 
 class NodeManager(object):
     def __init__(self, controller):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
 
-        self.controller = controller
+        self._controller = controller
         self.nodes = []
         self.groups = []
 
@@ -157,7 +169,7 @@ class NodeManager(object):
         self.nodeExitCallbacks = []
 
         self.helloMsgInterval = 3
-        self.helloTimeout = 3*self.helloMsgInterval
+        self.helloTimeout = 3 * self.helloMsgInterval
 
     def add_new_node_callback(self, callback):
         self.newNodeCallbacks.append(callback)
@@ -169,19 +181,17 @@ class NodeManager(object):
         node = None
         for n in self.nodes:
             if n.id == nid:
-                node = n;
+                node = n
                 break
-        return node 
-
+        return node
 
     def get_node_by_ip(self, ip):
         node = None
         for n in self.nodes:
             if n.ip == ip:
-                node = n;
+                node = n
                 break
         return node
-
 
     def get_node_by_str(self, string):
         if isinstance(string, Node):
@@ -195,7 +205,6 @@ class NodeManager(object):
         node = self.get_node_by_id(string)
         return node
 
-
     def add_node(self, msgContainer):
         topic = msgContainer[0]
         cmdDesc = msgContainer[1]
@@ -204,24 +213,26 @@ class NodeManager(object):
         agentId = str(msg.agent_uuid)
         agentName = msg.name
         agentInfo = msg.info
-        
+
         for n in self.nodes:
             if agentId == n.id:
-                self.log.debug("Already known Node UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
+                self.log.debug("Already known Node UUID: {}, \
+                    Name: {}, Info: {}".format(agentId, agentName, agentInfo))
                 return
 
-        node = Node(msg)
+        node = Node(msg, self._controller)
         self.nodes.append(node)
-        self.log.debug("New node with UUID: {}, Name: {}, Info: {}".format(agentId,agentName,agentInfo))
-        self.controller.transport.subscribe_to(agentId)
+        self.log.debug("New node with UUID: {}, Name: {}, \
+            Info: {}".format(agentId, agentName, agentInfo))
+        self._controller.transport.subscribe_to(agentId)
 
-        #start hello timeout timer
+        # start hello timeout timer
         node.set_timer_callback(self.remove_node_hello_timer)
         gevent.spawn(node.hello_timer)
 
         if node and self.newNodeCallbacks:
             for cb in self.newNodeCallbacks:
-                #TODO: run in new thread in case there is loop insice callback
+                # TODO: run in new thread in case there is loop insice callback
                 cb(node)
 
         dest = agentId
@@ -232,20 +243,20 @@ class NodeManager(object):
 
         msg = msgs.NewNodeAck()
         msg.status = True
-        msg.controller_uuid = self.controller.uuid
+        msg.controller_uuid = self._controller.uuid
         msg.agent_uuid = agentId
         msg.topics.append("ALL")
 
         msgContainer = [dest, cmdDesc, msg]
 
-        time.sleep(1) # TODO: why?
-        self.controller.transport.send_downlink_msg(msgContainer)
+        time.sleep(1)  # TODO: why?
+        self._controller.transport.send_downlink_msg(msgContainer)
         return node
-
 
     def remove_node_hello_timer(self, node):
         reason = "HelloTimeout"
-        self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(node.id, reason))
+        self.log.debug("Controller removes node with UUID: {},\
+            Reason: {}".format(node.id, reason))
 
         if node and node in self.nodes:
             self.nodes.remove(node)
@@ -253,7 +264,6 @@ class NodeManager(object):
             if self.nodeExitCallbacks:
                 for cb in self.nodeExitCallbacks:
                     cb(node, reason)
-
 
     def remove_node(self, msgContainer):
         topic = msgContainer[0]
@@ -268,7 +278,8 @@ class NodeManager(object):
         if not node:
             return
 
-        self.log.debug("Controller removes node with UUID: {}, Reason: {}".format(agentId, reason))
+        self.log.debug("Controller removes node with UUID: {},\
+            Reason: {}".format(agentId, reason))
 
         if node and node in self.nodes:
             self.nodes.remove(node)
@@ -276,7 +287,6 @@ class NodeManager(object):
             if self.nodeExitCallbacks:
                 for cb in self.nodeExitCallbacks:
                     cb(node, reason)
-
 
     def send_hello_msg_to_node(self, nodeId):
         self.log.debug("Controller sends HelloMsg to agent")
@@ -287,11 +297,10 @@ class NodeManager(object):
         cmdDesc.serialization_type = msgs.CmdDesc.PROTOBUF
 
         msg = msgs.HelloMsg()
-        msg.uuid = str(self.controller.uuid)
+        msg.uuid = str(self._controller.uuid)
         msg.timeout = self.helloTimeout
         msgContainer = [dest, cmdDesc, msg]
-        self.controller.transport.send_downlink_msg(msgContainer)
-
+        self._controller.transport.send_downlink_msg(msgContainer)
 
     def serve_hello_msg(self, msgContainer):
         self.log.debug("Controller received HELLO MESSAGE from agent".format())
