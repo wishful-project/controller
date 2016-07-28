@@ -71,7 +71,7 @@ class ControllableUnit(object):
         self._callingCtx._callback = callback
         return self
 
-    def _clear_call_context(self):
+    def _clear_call_context(self, ctx=None):
         self._callingCtx._scope = None
         self._callingCtx._iface = None
         self._callingCtx._exec_time = None
@@ -82,6 +82,18 @@ class ControllableUnit(object):
         self._callingCtx._upi = None
         self._callingCtx._args = None
         self._callingCtx._kwargs = None
+
+        if ctx:
+            ctx._scope = None
+            ctx._iface = None
+            ctx._exec_time = None
+            ctx._delay = None
+            ctx._timeout = None
+            ctx._blocking = True
+            ctx._callback = None
+            ctx._upi = None
+            ctx._args = None
+            ctx._kwargs = None
 
     def cmd_wrapper(self, upi_type, fname, *args, **kwargs):
         self._callingCtx._upi_type = upi_type

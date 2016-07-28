@@ -26,6 +26,7 @@ class Group(object):
 
 class Node(ControllableUnit):
     def __init__(self, msg, ctrl):
+        super().__init__()
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
         self.id = str(msg.agent_uuid)
@@ -40,8 +41,6 @@ class Node(ControllableUnit):
         self.modules_without_iface = []
 
         self._controller = ctrl
-        self.radio = ctrl.radio
-        self.net = ctrl.net
         self._stop = False
         self._helloTimeout = 9
         self._timerCallback = None
@@ -90,8 +89,10 @@ class Node(ControllableUnit):
                            self.modules_without_iface)
         return string
 
-    def get_iface(ifaceID):
-        return 1
+    def exec_cmd(self, ctx):
+        ctx._scope = self
+        self._controller.exec_cmd(ctx)
+        self._clear_call_context()
 
     def set_timer_callback(self, cb):
         self._timerCallback = cb
@@ -152,11 +153,8 @@ class Node(ControllableUnit):
 
         raise Exception("UPI function: {}:{} not supported for iface: {} in node: {}, please install proper module".format(
             upi_type, fname, iface, self.name))
-
         return False
 
-        def exec_cmd(self, upi_type, fname, *args, **kwargs):
-            pass
 
 
 class NodeManager(object):

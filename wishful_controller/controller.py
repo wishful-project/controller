@@ -257,7 +257,6 @@ class Controller(Greenlet, ControllableUnit):
 
     def exec_cmd(self, ctx):
         #get function call context
-        ctx = self._callingCtx
         upi_type = ctx._upi_type
         fname = ctx._upi
         args = ctx._args
