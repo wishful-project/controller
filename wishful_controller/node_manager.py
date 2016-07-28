@@ -1,9 +1,9 @@
 import logging
 import time
+import uuid
 import gevent
-import wishful_upis as upis
 import wishful_framework as msgs
-from wishful_framework import upis_builder
+from .common import ControllableUnit
 
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -24,7 +24,7 @@ class Group(object):
         self.nodes.remove(node)
 
 
-class Node(object):
+class Node(ControllableUnit):
     def __init__(self, msg, ctrl):
         self.log = logging.getLogger("{module}.{name}".format(
             module=self.__class__.__module__, name=self.__class__.__name__))
@@ -154,6 +154,9 @@ class Node(object):
             upi_type, fname, iface, self.name))
 
         return False
+
+        def exec_cmd(self, upi_type, fname, *args, **kwargs):
+            pass
 
 
 class NodeManager(object):
