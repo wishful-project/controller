@@ -302,7 +302,7 @@ class Controller(Greenlet):
 
     def add_callback(self, function, **options):
         def decorator(callback):
-            self.log.debug("Register callback for: ", function.__name__)
+            self.log.debug("Register callback for: {}".format(function.__name__))
             self.callbacks[function.__name__] = callback
             return callback
         return decorator
