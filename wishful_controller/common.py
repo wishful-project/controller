@@ -101,7 +101,7 @@ class ControllableUnit(object):
         self._callingCtx._args = args
         self._callingCtx._kwargs = kwargs
 
-        self.exec_cmd(self._callingCtx)
+        return self.exec_cmd(self._callingCtx)
 
     def exec_cmd(self, ctx):
         pass
