@@ -4,6 +4,7 @@ import uuid
 import gevent
 import wishful_framework as msgs
 from .common import ControllableUnit
+from .interface import Interface
 
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -37,6 +38,7 @@ class Node(ControllableUnit):
         self.functions = {}
         self.generators = {}
         self.interfaces = {}
+        self.ifaceObjs = {}
         self.iface_to_modules = {}
         self.modules_without_iface = []
 
@@ -75,6 +77,9 @@ class Node(ControllableUnit):
                     del self.modules_without_iface[moduleId]
         self.modules_without_iface = list(self.modules_without_iface.keys())
 
+        for idx, name in self.interfaces.items():
+            self.ifaceObjs[idx] = Interface(name, self)
+
     def __str__(self):
         string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \
                   \nModules: {} \
@@ -91,8 +96,12 @@ class Node(ControllableUnit):
 
     def exec_cmd(self, ctx):
         ctx._scope = self
-        self._controller.exec_cmd(ctx)
+        response = self._controller.exec_cmd(ctx)
         self._clear_call_context()
+        return response
+
+    def get_iface(self, ifaceId):
+        return self.ifaceObjs[ifaceId]
 
     def set_timer_callback(self, cb):
         self._timerCallback = cb
