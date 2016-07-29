@@ -1,8 +1,4 @@
 import logging
-import subprocess
-import zmq.green as zmq
-import random
-import wishful_framework as msgs
 
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -60,14 +56,12 @@ class ModuleManager(object):
         for module in list(self.modules.values()):
             module.disconnected()
 
-
     def get_iface_id(self, name):
-        for k,v in self.interfaces.items():
+        for k, v in self.interfaces.items():
             if v == name:
                 return k
 
         return None
-
 
     def add_module_obj(self, moduleName, wishfulModule):
         moduleId = self.generate_new_module_id()
@@ -80,9 +74,9 @@ class ModuleManager(object):
 
         return wishfulModule
 
-
     def add_module(self, moduleName, pyModuleName, className, kwargs):
-        self.log.debug("Add new module: {}:{}:{}".format(moduleName, pyModuleName, className))
+        self.log.debug("Add new module: \
+            {}:{}:{}".format(moduleName, pyModuleName, className))
 
         pyModule = self.my_import(pyModuleName)
         moduleContructor = getattr(pyModule, className)
