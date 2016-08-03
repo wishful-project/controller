@@ -2,10 +2,13 @@ from gevent.local import local
 import wishful_upis as upis
 from wishful_framework import upis_builder
 
+from wishful_framework.controller.event import EventDescriptor
+from wishful_framework.controller.service import ServiceDescriptor
+
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
-__email__ = "{gawlowicz, chwalisz}@tkn.tu-berlin.de"
+__email__ = "gawlowicz@tkn.tu-berlin.de"
 
 
 class CallingContext(local):
@@ -101,7 +104,12 @@ class ControllableUnit(object):
         self._callingCtx._args = args
         self._callingCtx._kwargs = kwargs
 
-        return self.exec_cmd(self._callingCtx)
+        if 'event' == fname.split('_')[0]:
+            return EventDescriptor(self._callingCtx)
+        elif 'service' == fname.split('_')[0]:
+            return ServiceDescriptor(self._callingCtx)
+        else:
+            return self.exec_cmd(self._callingCtx)
 
     def exec_cmd(self, ctx):
         pass
