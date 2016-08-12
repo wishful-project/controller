@@ -13,7 +13,6 @@ class ModuleManager(object):
 
         self.controller = controller
         self.moduleIdGen = 0
-        self.ifaceIdGen = 0
 
         self.modules = {}
         self.interfaces = {}

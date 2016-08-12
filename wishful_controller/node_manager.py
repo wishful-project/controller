@@ -4,7 +4,7 @@ import uuid
 import gevent
 import wishful_framework as msgs
 from .common import ControllableUnit
-from .interface import Interface
+from .interface import Device
 
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
@@ -25,6 +25,44 @@ class Group(object):
         self.nodes.remove(node)
 
 
+class ModuleDescriptor(object):
+    """docstring for ModuleDescriptor"""
+
+    def __init__(self):
+        super(ModuleDescriptor, self).__init__()
+        self.id = None
+        self.name = None
+        self.device = None
+        self.attributes = []
+        self.functions = []
+        self.events = []
+        self.services = []
+
+    def __str__(self):
+        string = ("  Module: {}\n"
+                  "    ID: {} \n"
+                  .format(self.name, self.id))
+
+        if self.device:
+            desc = ("    Device: {}:{} \n"
+                    .format(self.device._id, self.device._name))
+            string = string + desc
+
+        string = string + "    Attributes:\n"
+        for k in self.attributes:
+            string = string + "      {}\n".format(k)
+        string = string + "    Functions:\n"
+        for k in self.functions:
+            string = string + "      {}\n".format(k)
+        string = string + "    Events:\n"
+        for k in self.events:
+            string = string + "      {}\n".format(k)
+        string = string + "    Services:\n"
+        for k in self.services:
+            string = string + "      {}\n".format(k)
+        return string
+
+
 class Node(ControllableUnit):
     def __init__(self, msg, ctrl):
         super().__init__()
@@ -34,13 +72,8 @@ class Node(ControllableUnit):
         self.ip = str(msg.ip)
         self.name = str(msg.name)
         self.info = str(msg.info)
+        self.devices = {}
         self.modules = {}
-        self.functions = {}
-        self.generators = {}
-        self.interfaces = {}
-        self.ifaceObjs = {}
-        self.iface_to_modules = {}
-        self.modules_without_iface = []
 
         self._controller = ctrl
         self._stop = False
@@ -48,60 +81,49 @@ class Node(ControllableUnit):
         self._timerCallback = None
 
         for module in msg.modules:
-            self.modules[module.id] = str(module.name)
+            moduleDesc = ModuleDescriptor()
+            moduleDesc.id = module.id
+            moduleDesc.name = str(module.name)
+
+            if module.HasField('device'):
+                deviceDesc = Device(module.device.id, module.device.name, self)
+                moduleDesc.device = deviceDesc
+                self.devices[deviceDesc._id] = deviceDesc._name
+
+            for attr in module.attributes:
+                moduleDesc.attributes.append(str(attr.name))
+
             for func in module.functions:
-                if module.id not in self.functions:
-                    self.functions[module.id] = [str(func.name)]
-                else:
-                    self.functions[module.id].append(str(func.name))
+                moduleDesc.functions.append(str(func.name))
 
-            for generator in module.generators:
-                if module.id not in self.generators:
-                    self.generators[module.id] = [str(generator.name)]
-                else:
-                    self.generators[module.id].append(str(generator.name))
+            for event in module.events:
+                moduleDesc.events.append(str(event.name))
 
-        for iface in msg.interfaces:
-            self.interfaces[iface.id] = str(iface.name)
-            for module in iface.modules:
-                if iface.id in self.iface_to_modules:
-                    self.iface_to_modules[iface.id].append(int(module.id))
-                else:
-                    self.iface_to_modules[iface.id] = [int(module.id)]
+            for service in module.services:
+                moduleDesc.services.append(str(service.name))
 
-        self.modules_without_iface = self.modules.copy()
-        for ifaceId, moduleIds in self.iface_to_modules.items():
-            for moduleId in moduleIds:
-                moduleId = int(moduleId)
-                if moduleId in list(self.modules_without_iface.keys()):
-                    del self.modules_without_iface[moduleId]
-        self.modules_without_iface = list(self.modules_without_iface.keys())
-
-        for idx, name in self.interfaces.items():
-            self.ifaceObjs[idx] = Interface(name, self)
+            self.modules[moduleDesc.name] = moduleDesc
 
     def __str__(self):
-        string = "ID: {} \nIP: {} \nName: {} \nInfo: {} \
-                  \nModules: {} \
-                  \nModule_Functions: {} \
-                  \nModule_Generators: {} \
-                  \nInterfaces: {} \
-                  \nIface_Modules: {} \
-                  \nModules_without_iface: {} \
-                  ".format(self.id, self.ip, self.name, self.info,
-                           self.modules, self.functions, self.generators,
-                           self.interfaces, self.iface_to_modules,
-                           self.modules_without_iface)
+        string = ("Node Description:\n" +
+                  " ID:{}\n"
+                  " Name:{}\n"
+                  " IP:{}\n"
+                  .format(self.id, self.name, self.ip))
+
+        string = string + " Devices:\n"
+        for devId, device in self.devices.items():
+            string = string + "  {}:{}\n".format(devId, device)
+
+        string = string + " Modules:\n"
+        for name, module in self.modules.items():
+            moduleString = module.__str__()
+            string = string + moduleString
+
         return string
 
-    def send_msg(self, ctx):
-        ctx._scope = self
-        response = self._controller.send_msg(ctx)
-        self._clear_call_context()
-        return response
-
-    def get_iface(self, ifaceId):
-        return self.ifaceObjs[ifaceId]
+    def get_device(self, devId):
+        return self.devices[devId]
 
     def set_timer_callback(self, cb):
         self._timerCallback = cb
@@ -117,53 +139,32 @@ class Node(ControllableUnit):
     def refresh_hello_timer(self):
         self._helloTimeout = 9
 
-    def get_iface_id(self, name):
-        for k, v in self.interfaces.items():
+    def get_device_id(self, name):
+        for k, v in self.device.items():
             if v == name:
                 return k
         return None
 
-    def is_upi_supported(self, iface, upi_type, fname):
-        moduleIds = []
+    def send_msg(self, ctx):
+        ctx._scope = self
+        response = self._controller.send_msg(ctx)
+        self._clear_call_context()
+        return response
 
-        self.log.debug("Checking call: {}:{} for iface {} in node {}".format(
-            upi_type, fname, iface, self.name))
-        if iface:
-            ifaceId = self.get_iface_id(str(iface))
-            moduleIds = self.iface_to_modules[ifaceId]
-        else:
-            moduleIds = self.modules_without_iface
+    def is_upi_supported(self, device, upiType, upiName):
+        self.log.debug("Checking call: {}.{} for device {} in node {}"
+                       .format(upiType, upiName, device, self.name))
 
-        for moduleId in moduleIds:
-            # check module functions
-            if moduleId in self.functions:
-                functions = self.functions[moduleId]
-                if fname in functions:
+        for module in self.modules.items():
+            mdevice = module._deviceName
+            if mdevice == device:
+                if upiName in module._functions:
                     return True
-
-            # check if function is generator
-            if moduleId in self.generators:
-                generators = self.generators[moduleId]
-                if fname in generators:
-                    raise Exception("UPI: {}:{} is generator in node: {},\
-                                     please call with generator API".format(
-                        upi_type, fname, self.name))
-
-        # check if function requires iface
-        if iface:
-            for moduleId in self.modules_without_iface:
-                if moduleId in self.functions and fname in self.functions[moduleId]:
-                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(
-                        upi_type, fname, self.name))
-
-                if moduleId in self.generators and fname in self.generators[moduleId]:
-                    raise Exception("UPI function: {}:{} cannot be called with iface in node: {}".format(
-                        upi_type, fname, self.name))
-
-        raise Exception("UPI function: {}:{} not supported for iface: {} in node: {}, please install proper module".format(
-            upi_type, fname, iface, self.name))
-        return False
-
+            elif mdevice is None and device is None:
+                if upiName in module._functions:
+                    return True
+            else:
+                return False
 
 
 class NodeManager(object):
@@ -226,14 +227,15 @@ class NodeManager(object):
 
         for n in self.nodes:
             if agentId == n.id:
-                self.log.debug("Already known Node UUID: {}, \
-                    Name: {}, Info: {}".format(agentId, agentName, agentInfo))
+                self.log.debug("Already known Node UUID: {},"
+                               " Name: {}, Info: {}"
+                               .format(agentId, agentName, agentInfo))
                 return
 
         node = Node(msg, self._controller)
         self.nodes.append(node)
-        self.log.debug("New node with UUID: {}, Name: {}, \
-            Info: {}".format(agentId, agentName, agentInfo))
+        self.log.debug("New node with UUID: {}, Name: {},"
+                       " Info: {}".format(agentId, agentName, agentInfo))
         self._controller.transport.subscribe_to(agentId)
 
         # start hello timeout timer
@@ -265,8 +267,8 @@ class NodeManager(object):
 
     def remove_node_hello_timer(self, node):
         reason = "HelloTimeout"
-        self.log.debug("Controller removes node with UUID: {},\
-            Reason: {}".format(node.id, reason))
+        self.log.debug("Controller removes node with UUID: {},"
+                       " Reason: {}".format(node.id, reason))
 
         if node and node in self.nodes:
             self.nodes.remove(node)
@@ -288,8 +290,8 @@ class NodeManager(object):
         if not node:
             return
 
-        self.log.debug("Controller removes node with UUID: {},\
-            Reason: {}".format(agentId, reason))
+        self.log.debug("Controller removes node with UUID: {},"
+                       " Reason: {}".format(agentId, reason))
 
         if node and node in self.nodes:
             self.nodes.remove(node)

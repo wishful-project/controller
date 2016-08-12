@@ -20,3 +20,19 @@ class Interface(ControllableUnit):
         response = self._node.send_msg(ctx)
         self._clear_call_context()
         return response
+
+
+class Device(ControllableUnit):
+    def __init__(self, devName, devId, node):
+        super().__init__()
+        self._log = logging.getLogger("{module}.{name}".format(
+            module=self.__class__.__module__, name=self.__class__.__name__))
+        self._id = devId
+        self._name = devName
+        self._node = node
+
+    def send_msg(self, ctx):
+        ctx._iface = self._name
+        response = self._node.send_msg(ctx)
+        self._clear_call_context()
+        return response
