@@ -28,9 +28,9 @@ class LocalControlProgramDescriptor(object):
             self.log.debug("Waiting for msg in blocking call")
             msg = self.queue.get(block=True, timeout=timeout)
             return msg
-        except gevent.timeout.Timeout as e:
+        except gevent.timeout.Timeout:
             return None
-        except gevent.queue.Empty as e:
+        except gevent.queue.Empty:
             return None
 
     def send(self, msg):
@@ -67,11 +67,10 @@ class HierarchicalControlModule(wishful_module.ControllerModule):
         if myProg:
             myProg._receive_msg(msg)
 
-
     @wishful_module.bind_function(upis.mgmt.add_rule)
     def add_rule(self):
         self.log.debug("add_rule".format())
-        #do some stuff here
+        # do some stuff here
         pass
 
 

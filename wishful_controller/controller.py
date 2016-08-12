@@ -163,8 +163,8 @@ class Controller(Greenlet, ControllableUnit):
 
         if "controller" in config:
             controllerInfo = config["controller"]
-            self.log.debug("Controller info from config\
-                            file: {}".format(controllerInfo))
+            self.log.debug("Controller info from config"
+                            " file: {}".format(controllerInfo))
 
             if "name" in controllerInfo:
                 self.name = controllerInfo["name"]
@@ -243,9 +243,9 @@ class Controller(Greenlet, ControllableUnit):
         if not destNode:
             raise Exception("Node for UPI function: {}:{} is not available".format(upi_type, fname))
 
-        if not destNode.is_upi_supported(iface=iface, upi_type=upi_type, fname=fname):
-            raise Exception("Node: {} does not support UPI Function: {}:{} \
-                for iface: {}, please install proper modules".format(destNode.name, upi_type, fname, iface))
+        #if not destNode.is_upi_supported(iface=iface, upi_type=upi_type, fname=fname):
+        #    raise Exception("Node: {} does not support UPI Function: {}:{}"
+        #        "for iface: {}, please install proper modules".format(destNode.name, upi_type, fname, iface))
 
 
         #set destination
@@ -254,15 +254,14 @@ class Controller(Greenlet, ControllableUnit):
         self.log.debug("Controller sends cmd message to node: {}".format(destNode.id))
         self.transport.send_downlink_msg(myMsgContainter)
 
-
-    def exec_cmd(self, ctx):
+    def send_msg(self, ctx):
         #get function call context
         upi_type = ctx._upi_type
         fname = ctx._upi
         args = ctx._args
         kwargs = ctx._kwargs
 
-        self.log.debug("Controller builds cmd message: {}.{} with args:{}, kwargs:{}".format(upi_type, fname, args, kwargs))
+        self.log.debug("Controller builds cmd message: {} with args:{}, kwargs:{}".format(fname, args, kwargs))
 
         nodeNum = None
         callId = str(self.generate_call_id())
@@ -278,6 +277,7 @@ class Controller(Greenlet, ControllableUnit):
 
         if ctx._delay:
             exec_time = datetime.datetime.now() + datetime.timedelta(seconds=ctx._delay)
+            cmdDesc.exec_time = str(exec_time)
             ctx._blocking = False
 
         if ctx._exec_time:
@@ -307,7 +307,6 @@ class Controller(Greenlet, ControllableUnit):
         #Serialize kwargs (they contrain args)
         cmdDesc.serialization_type = msgs.CmdDesc.PICKLE
         msgContainer = [cmdDesc, kwargs]
-
 
         # TODO: currently sending cmd msg to each node separately
         # it would be more efficient to exploit PUB/SUB zmq mechanism

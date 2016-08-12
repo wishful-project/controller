@@ -15,8 +15,8 @@ class Interface(ControllableUnit):
         self._name = name
         self._node = node
 
-    def exec_cmd(self, ctx):
+    def send_msg(self, ctx):
         ctx._iface = self._name
-        response = self._node.exec_cmd(ctx)
+        response = self._node.send_msg(ctx)
         self._clear_call_context()
         return response

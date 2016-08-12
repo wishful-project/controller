@@ -2,9 +2,6 @@ from gevent.local import local
 import wishful_upis as upis
 from wishful_framework import upis_builder
 
-from wishful_framework.controller.event import EventDescriptor
-from wishful_framework.controller.service import ServiceDescriptor
-
 __author__ = "Piotr Gawlowicz"
 __copyright__ = "Copyright (c) 2015, Technische Universitat Berlin"
 __version__ = "0.1.0"
@@ -98,18 +95,40 @@ class ControllableUnit(object):
             ctx._args = None
             ctx._kwargs = None
 
+    def send_msg(self, ctx):
+        pass
+
     def cmd_wrapper(self, upi_type, fname, *args, **kwargs):
         self._callingCtx._upi_type = upi_type
         self._callingCtx._upi = fname
         self._callingCtx._args = args
         self._callingCtx._kwargs = kwargs
+        return self.send_msg(self._callingCtx)
 
-        if 'event' == fname.split('_')[0]:
-            return EventDescriptor(self._callingCtx)
-        elif 'service' == fname.split('_')[0]:
-            return ServiceDescriptor(self._callingCtx)
-        else:
-            return self.exec_cmd(self._callingCtx)
+    def start_event(self, event, ctx=None):
+        self._callingCtx._upi_type = event.__class__.__module__.split('.')[-1]
+        self._callingCtx._upi = event.__class__.__name__
+        self._callingCtx._args = ["start"]
+        self._callingCtx._kwargs = {}
+        return self.send_msg(self._callingCtx)
 
-    def exec_cmd(self, ctx):
-        pass
+    def stop_event(self, event, ctx=None):
+        self._callingCtx._upi_type = event.__class__.__module__.split('.')[-1]
+        self._callingCtx._upi = event.__class__.__name__
+        self._callingCtx._args = ["stop"]
+        self._callingCtx._kwargs = {}
+        return self.send_msg(self._callingCtx)
+
+    def start_service(self, service, ctx=None):
+        self._callingCtx._upi_type = service.__module__.split('.')[-1]
+        self._callingCtx._upi = service.__class__.__name__
+        self._callingCtx._args = ["start"]
+        self._callingCtx._kwargs = {}
+        return self.send_msg(self._callingCtx)
+
+    def stop_service(self, service, ctx=None):
+        self._callingCtx._upi_type = service.__module__.split('.')[-1]
+        self._callingCtx._upi = service.__class__.__name__
+        self._callingCtx._args = ["stop"]
+        self._callingCtx._kwargs = {}
+        return self.send_msg(self._callingCtx)

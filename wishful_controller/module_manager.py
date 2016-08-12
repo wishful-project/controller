@@ -15,7 +15,6 @@ class ModuleManager(object):
         self.moduleIdGen = 0
         self.ifaceIdGen = 0
 
-        self.discoveryModule = None
         self.modules = {}
         self.interfaces = {}
         self.iface_to_module_mapping = {}
@@ -68,15 +67,11 @@ class ModuleManager(object):
         wishfulModule.id = moduleId
 
         self.modules[moduleId] = wishfulModule
-
-        if moduleName == "discovery":
-            self.discoveryModule = wishfulModule
-
         return wishfulModule
 
     def add_module(self, moduleName, pyModuleName, className, kwargs):
-        self.log.debug("Add new module: \
-            {}:{}:{}".format(moduleName, pyModuleName, className))
+        self.log.debug("Add new module: {}:{}:{}"
+                       .format(moduleName, pyModuleName, className))
 
         pyModule = self.my_import(pyModuleName)
         moduleContructor = getattr(pyModule, className)

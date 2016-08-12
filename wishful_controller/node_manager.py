@@ -94,9 +94,9 @@ class Node(ControllableUnit):
                            self.modules_without_iface)
         return string
 
-    def exec_cmd(self, ctx):
+    def send_msg(self, ctx):
         ctx._scope = self
-        response = self._controller.exec_cmd(ctx)
+        response = self._controller.send_msg(ctx)
         self._clear_call_context()
         return response
 
