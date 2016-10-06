@@ -26,7 +26,7 @@ class LocalControlProgramDescriptor(object):
     def recv(self, block=True, timeout=None):
         try:
             self.log.debug("Waiting for msg in blocking call")
-            msg = self.queue.get(block=True, timeout=timeout)
+            msg = self.queue.get(block=block, timeout=timeout)
             return msg
         except gevent.timeout.Timeout as e:
             return None
