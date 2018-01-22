@@ -238,7 +238,6 @@ class NodeManager(object):
 
         msgContainer = [dest, cmdDesc, msg]
 
-        time.sleep(1) # TODO: why?
         self.controller.transport.send_downlink_msg(msgContainer)
         return node
 

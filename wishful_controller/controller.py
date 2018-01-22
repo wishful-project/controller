@@ -379,7 +379,7 @@ class Controller(Greenlet):
             blocking = False
 
         if exec_time:
-            cmdDesc.exec_time = str(exec_time)
+            cmdDesc.exec_time = exec_time.strftime("%Y-%m-%d %H:%M:%S.%f")
             blocking = False
 
         #call check
