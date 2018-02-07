@@ -2,6 +2,7 @@ import logging
 import time
 import sys
 import zmq.green as zmq
+from importlib import import_module
 from gevent.lock import Semaphore
 import wishful_framework as msgs
 import dill #for pickling what standard pickle can’t cope with
@@ -87,6 +88,12 @@ class TransportChannel(object):
         finally:
             self.downlinkSocketLock.release()
 
+    def deserialize_protobuff(self, message, typ):
+        module_, class_ = typ.rsplit('.', 1)
+        class_ = getattr(import_module(module_), class_)
+        rv = class_()
+        rv.ParseFromString(message)
+        return rv
 
     def start_receiving(self):
         socks = dict(self.poller.poll())
@@ -107,6 +114,9 @@ class TransportChannel(object):
                     msg = pickle.loads(msg)
                 except:
                     msg = dill.loads(msg)
+            elif cmdDesc.serialization_type == msgs.CmdDesc.PROTOBUF:
+                if cmdDesc.pb_full_name:
+                    msg = self.deserialize_protobuff(msg, cmdDesc.pb_full_name)
 
             msgContainer[0] = dest.decode('utf-8')
             msgContainer[1] = cmdDesc
