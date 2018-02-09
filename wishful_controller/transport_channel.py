@@ -43,6 +43,8 @@ class TransportChannel(object):
         #register UL socket in poller
         self.poller.register(self.ul_socket, zmq.POLLIN)
 
+        self.importedPbClasses = {}
+
 
     def set_downlink(self, downlink):
         self.log.debug("Set Downlink: {}".format(downlink))
@@ -89,8 +91,13 @@ class TransportChannel(object):
             self.downlinkSocketLock.release()
 
     def deserialize_protobuff(self, message, typ):
-        module_, class_ = typ.rsplit('.', 1)
-        class_ = getattr(import_module(module_), class_)
+        class_ = self.importedPbClasses.get(typ, None)
+
+        if class_ is None:
+            module_, class_ = typ.rsplit('.', 1)
+            class_ = getattr(import_module(module_), class_)
+            self.importedPbClasses[typ] = class_
+
         rv = class_()
         rv.ParseFromString(message)
         return rv
